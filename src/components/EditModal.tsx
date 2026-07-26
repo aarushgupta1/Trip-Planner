@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { Attraction, Category } from '@/lib/types';
-import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, generateTripDates, formatDateFull, formatDateShort, getMapsUrl, nextTripDate, timeAgo } from '@/lib/utils';
+import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, generateTripDates, formatDateFull, getMapsUrl, timeAgo } from '@/lib/utils';
 import { getCityForDate } from '@/lib/trip';
-import { createAttractionObject, updateAttraction, deleteAttraction, removeTicketUrl } from '@/app/actions';
+import { updateAttraction, deleteAttraction, removeTicketUrl } from '@/app/actions';
 import { getEditorName } from '@/lib/editorName';
 import { TICKET_IMAGE_EXTENSION_RE, ticketFilename, uploadTicketFile } from '@/lib/tickets';
 import { isTicketFileTooLarge, MAX_TICKET_FILE_SIZE_LABEL } from '@/lib/ticketLimits';
@@ -12,7 +12,7 @@ import { findTimeConflict } from '@/lib/timeUtils';
 import LocationAutocomplete from './LocationAutocomplete';
 import TimeInput from './TimeInput';
 import ConfirmDialog from './ConfirmDialog';
-import { X, Trash2, Save, Copy, Upload, FileText, WifiOff, MapPin, Link2, Check } from 'lucide-react';
+import { X, Trash2, Save, Upload, FileText, WifiOff, MapPin, Link2, Check } from 'lucide-react';
 
 interface EditModalProps {
   attraction: Attraction;
@@ -20,11 +20,10 @@ interface EditModalProps {
   onClose: () => void;
   onSaved: (updated: Attraction) => void;
   onDeleted: (deleted: Attraction) => void;
-  onDuplicated: (duplicate: Attraction) => void;
   readOnly?: boolean;
 }
 
-export default function EditModal({ attraction, allAttractions, onClose, onSaved, onDeleted, onDuplicated, readOnly = false }: EditModalProps) {
+export default function EditModal({ attraction, allAttractions, onClose, onSaved, onDeleted, readOnly = false }: EditModalProps) {
   // Legacy unscheduled events (from before the "Unscheduled" option was
   // removed) fall back to the trip's first day rather than an empty value,
   // since every event now needs a real scheduled date.
@@ -37,6 +36,8 @@ export default function EditModal({ attraction, allAttractions, onClose, onSaved
     end_time: attraction.end_time ?? '',
     notes: attraction.notes ?? '',
     location: attraction.location ?? '',
+    opening_hours: attraction.opening_hours ?? '',
+    open_days: attraction.open_days ?? '',
     departure_timezone: attraction.departure_timezone,
     arrival_timezone: attraction.arrival_timezone,
   };
@@ -50,11 +51,6 @@ export default function EditModal({ attraction, allAttractions, onClose, onSaved
   const [ticketError, setTicketError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [isDuplicating, setIsDuplicating] = useState(false);
-  const [duplicateError, setDuplicateError] = useState<string | null>(null);
-  const [duplicateSuccess, setDuplicateSuccess] = useState<string | null>(null);
-  const [showDuplicatePicker, setShowDuplicatePicker] = useState(false);
-  const [duplicateDates, setDuplicateDates] = useState<string[]>([]);
   const [linkCopied, setLinkCopied] = useState(false);
   // Prefer the precise geocoded coordinates from the last save, but as soon
   // as the location text is changed, fall back to a plain-text maps link
@@ -104,100 +100,6 @@ export default function EditModal({ attraction, allAttractions, onClose, onSaved
       setDeleteError(err instanceof Error ? err.message : "Couldn't delete — try again.");
       setIsDeleting(false);
     }
-  };
-
-  useEffect(() => {
-    if (!duplicateSuccess) return;
-    const t = setTimeout(() => setDuplicateSuccess(null), 3000);
-    return () => clearTimeout(t);
-  }, [duplicateSuccess]);
-
-  // Opens the inline "duplicate to..." picker, preselecting just the next
-  // trip day (same reasoning as the required day/start/end fields: an exact
-  // same-day, same-time duplicate would render stacked directly on top of
-  // the original) — but lets you check off any number of additional days,
-  // for things like a recurring breakfast across the whole trip.
-  const openDuplicatePicker = () => {
-    setDuplicateError(null);
-    setDuplicateSuccess(null);
-    setDuplicateDates([nextTripDate(attraction.scheduled_date ?? generateTripDates()[0])]);
-    setShowDuplicatePicker(true);
-  };
-
-  const toggleDuplicateDate = (date: string) => {
-    setDuplicateDates((prev) => (prev.includes(date) ? prev.filter((d) => d !== date) : [...prev, date]));
-  };
-
-  // Duplicates the last-saved event (not any unsaved edits in the form) to
-  // every checked day, one at a time so each gets its own conflict check.
-  // A day that conflicts is skipped rather than aborting the whole batch —
-  // the picker stays open afterward if anything was skipped so it's obvious
-  // which days still need attention, and stays open either way so
-  // duplicating in a few more days later doesn't require reopening it.
-  const handleDuplicate = () => {
-    if (duplicateDates.length === 0) return;
-    setDuplicateError(null);
-    setDuplicateSuccess(null);
-    setIsDuplicating(true);
-    startTransition(async () => {
-      const created: Attraction[] = [];
-      const skipped: { date: string; reason: string }[] = [];
-
-      for (const targetDate of duplicateDates) {
-        if (attraction.start_time) {
-          const conflict = findTimeConflict(allAttractions, targetDate, attraction.start_time, attraction.end_time);
-          if (conflict) {
-            skipped.push({ date: targetDate, reason: `conflicts with "${conflict.name}"` });
-            continue;
-          }
-        }
-        try {
-          const duplicate = await createAttractionObject(
-            {
-              name: `${attraction.name} (copy)`,
-              description: attraction.description,
-              category: attraction.category,
-              scheduled_date: targetDate,
-              start_time: attraction.start_time,
-              end_time: attraction.end_time,
-              notes: attraction.notes,
-              location: attraction.location,
-              departure_timezone: attraction.departure_timezone,
-              arrival_timezone: attraction.arrival_timezone,
-            },
-            getEditorName()
-          );
-          created.push(duplicate);
-        } catch (err) {
-          skipped.push({ date: targetDate, reason: err instanceof Error ? err.message : 'save failed' });
-        }
-      }
-
-      created.forEach((duplicate) => onDuplicated(duplicate));
-
-      if (created.length > 0) {
-        const dayList = created
-          .map((d) => d.scheduled_date)
-          .filter((d): d is string => !!d)
-          .map((d) => formatDateShort(d))
-          .join(', ');
-        setDuplicateSuccess(
-          skipped.length > 0
-            ? `Duplicated to ${created.length} of ${duplicateDates.length} days (${dayList}).`
-            : `Duplicated to ${dayList}.`
-        );
-      }
-      if (skipped.length > 0) {
-        setDuplicateError(
-          skipped.length === 1
-            ? `Skipped ${formatDateShort(skipped[0].date)} — ${skipped[0].reason}.`
-            : `Skipped ${skipped.length} days due to conflicts.`
-        );
-      } else {
-        setShowDuplicatePicker(false);
-      }
-      setIsDuplicating(false);
-    });
   };
 
   const handleTicketUpload = async (file: File) => {
@@ -256,6 +158,8 @@ export default function EditModal({ attraction, allAttractions, onClose, onSaved
         start_time: form.start_time || null,
         end_time: form.end_time || null,
         notes: form.notes || null,
+        opening_hours: form.opening_hours.trim() || null,
+        open_days: form.open_days.trim() || null,
         departure_timezone: form.departure_timezone,
         arrival_timezone: form.arrival_timezone,
       };
@@ -341,20 +245,7 @@ export default function EditModal({ attraction, allAttractions, onClose, onSaved
               className="shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors"
             >
               <Save size={16} />
-              {isPending && !isDuplicating ? 'Saving…' : 'Save'}
-            </button>
-            <button
-              onClick={() => (showDuplicatePicker ? setShowDuplicatePicker(false) : openDuplicatePicker())}
-              disabled={isPending || isDeleting || readOnly}
-              title="Duplicate to another day"
-              className={[
-                'shrink-0 p-2.5 rounded-xl transition-colors disabled:opacity-40',
-                showDuplicatePicker
-                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40'
-                  : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300',
-              ].join(' ')}
-            >
-              <Copy size={18} />
+              {isPending ? 'Saving…' : 'Save'}
             </button>
             <button
               onClick={handleDelete}
@@ -366,58 +257,10 @@ export default function EditModal({ attraction, allAttractions, onClose, onSaved
             </button>
           </div>
 
-          {showDuplicatePicker && (
-            <div className="-mt-2 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  Duplicate to{duplicateDates.length > 0 ? ` (${duplicateDates.length})` : ''}
-                </span>
-                <button
-                  onClick={() => setShowDuplicatePicker(false)}
-                  title="Cancel"
-                  className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-              <div className="grid grid-cols-4 gap-1">
-                {generateTripDates().map((d) => {
-                  const selected = duplicateDates.includes(d);
-                  return (
-                    <button
-                      key={d}
-                      onClick={() => toggleDuplicateDate(d)}
-                      className={[
-                        'px-1.5 py-1.5 rounded-lg border text-[10px] font-semibold transition-colors',
-                        selected
-                          ? 'border-blue-400 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
-                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800',
-                      ].join(' ')}
-                    >
-                      {formatDateShort(d)}
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                onClick={handleDuplicate}
-                disabled={isPending || duplicateDates.length === 0}
-                className="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-colors"
-              >
-                {isPending && isDuplicating
-                  ? 'Duplicating…'
-                  : `Duplicate to ${duplicateDates.length} day${duplicateDates.length === 1 ? '' : 's'}`}
-              </button>
-            </div>
-          )}
-
-          {(saveError || deleteError || duplicateError) && (
+          {(saveError || deleteError) && (
             <p className="-mt-2 text-xs text-red-500 dark:text-red-400 font-medium">
-              {saveError || deleteError || duplicateError}
+              {saveError || deleteError}
             </p>
-          )}
-          {duplicateSuccess && (
-            <p className="-mt-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium">{duplicateSuccess}</p>
           )}
 
           {/* Day */}
@@ -552,6 +395,36 @@ export default function EditModal({ attraction, allAttractions, onClose, onSaved
               className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-300 dark:placeholder-gray-600"
               placeholder="Address or place name (Vienna, Salzburg, or Prague)"
             />
+          </div>
+
+          {/* Hours + days open */}
+          <div className="grid grid-cols-2 gap-5">
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                Opening hours
+              </label>
+              <input
+                type="text"
+                value={form.opening_hours}
+                onChange={(e) => setForm((f) => ({ ...f, opening_hours: e.target.value }))}
+                disabled={readOnly}
+                className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-300 dark:placeholder-gray-600 disabled:cursor-not-allowed disabled:opacity-60"
+                placeholder="e.g. 9:00 AM – 5:00 PM"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                Days open
+              </label>
+              <input
+                type="text"
+                value={form.open_days}
+                onChange={(e) => setForm((f) => ({ ...f, open_days: e.target.value }))}
+                disabled={readOnly}
+                className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-300 dark:placeholder-gray-600 disabled:cursor-not-allowed disabled:opacity-60"
+                placeholder="e.g. Tue–Sun"
+              />
+            </div>
           </div>
 
           {/* Description */}

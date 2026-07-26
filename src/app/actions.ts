@@ -37,6 +37,8 @@ export async function createAttractionObject(
     end_time: string | null;
     notes: string | null;
     location: string | null;
+    opening_hours?: string | null;
+    open_days?: string | null;
     departure_timezone?: CalendarTimezone;
     arrival_timezone?: CalendarTimezone;
   },
@@ -77,7 +79,7 @@ export async function scheduleAttraction(id: string, scheduledDate: string | nul
 
 export async function updateAttraction(
   id: string,
-  data: Partial<Pick<Attraction, 'name' | 'description' | 'category' | 'scheduled_date' | 'start_time' | 'end_time' | 'notes' | 'location' | 'departure_timezone' | 'arrival_timezone'>>,
+  data: Partial<Pick<Attraction, 'name' | 'description' | 'category' | 'scheduled_date' | 'start_time' | 'end_time' | 'notes' | 'location' | 'opening_hours' | 'open_days' | 'departure_timezone' | 'arrival_timezone'>>,
   editedBy?: string | null
 ): Promise<void> {
   // Callers only pass `location` when it actually changed, so re-geocoding

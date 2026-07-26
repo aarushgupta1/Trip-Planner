@@ -44,6 +44,8 @@ export default function CreateModal({ date, startTime, allAttractions, onClose, 
     start_time: defaultStartTime,
     end_time: defaultEndTime,
     location: '',
+    opening_hours: '',
+    open_days: '',
     departure_timezone: 'vienna' as CalendarTimezone,
     arrival_timezone: 'vienna' as CalendarTimezone,
   };
@@ -101,6 +103,8 @@ export default function CreateModal({ date, startTime, allAttractions, onClose, 
             end_time: form.end_time || null,
             notes: null,
             location: form.location.trim() || null,
+            opening_hours: form.opening_hours.trim() || null,
+            open_days: form.open_days.trim() || null,
             departure_timezone: form.departure_timezone,
             arrival_timezone: form.arrival_timezone,
           },
@@ -296,6 +300,34 @@ export default function CreateModal({ date, startTime, allAttractions, onClose, 
               className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-300 dark:placeholder-gray-600"
               placeholder="Address or place name (Vienna, Salzburg, or Prague)"
             />
+          </div>
+
+          {/* Hours + days open */}
+          <div className="grid grid-cols-2 gap-5">
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                Opening hours
+              </label>
+              <input
+                type="text"
+                value={form.opening_hours}
+                onChange={(e) => setForm((f) => ({ ...f, opening_hours: e.target.value }))}
+                className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-300 dark:placeholder-gray-600"
+                placeholder="e.g. 9:00 AM – 5:00 PM"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                Days open
+              </label>
+              <input
+                type="text"
+                value={form.open_days}
+                onChange={(e) => setForm((f) => ({ ...f, open_days: e.target.value }))}
+                className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-300 dark:placeholder-gray-600"
+                placeholder="e.g. Tue–Sun"
+              />
+            </div>
           </div>
 
           {/* Description */}

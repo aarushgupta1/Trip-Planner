@@ -19,6 +19,8 @@ export interface Attraction {
   location: string | null; // free-text address, geocoded server-side into lat/lng
   lat: number | null;
   lng: number | null;
+  opening_hours: string | null; // free-text, e.g. "9:00 AM – 5:00 PM"
+  open_days: string | null; // free-text, e.g. "Tue–Sun (closed Mondays)"
   ticket_urls: string[]; // uploaded ticket files (images/PDFs) in Supabase Storage
   edited_by: string | null; // self-chosen display name of whoever last saved this — no auth, not verified
   updated_at: string;

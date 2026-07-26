@@ -942,7 +942,6 @@ export default function CalendarBoard({
             setEditingAttraction(null);
           }}
           onDeleted={handleAttractionDeleted}
-          onDuplicated={handleAttractionCreated}
           readOnly={!isOnline}
         />
       )}

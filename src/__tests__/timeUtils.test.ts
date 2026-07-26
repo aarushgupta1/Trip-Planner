@@ -29,6 +29,8 @@ function makeAttraction(overrides: Partial<Attraction> = {}): Attraction {
     location: null,
     lat: null,
     lng: null,
+    opening_hours: null,
+    open_days: null,
     ticket_urls: [],
     edited_by: null,
     updated_at: '2026-01-01T00:00:00Z',

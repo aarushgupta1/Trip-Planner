@@ -27,6 +27,12 @@ alter table attractions add column if not exists location text;
 alter table attractions add column if not exists lat double precision;
 alter table attractions add column if not exists lng double precision;
 
+-- Free-text hours/days-open info for the place, entered by hand (not
+-- geocoded or validated) — e.g. "9:00 AM – 5:00 PM" and "Tue–Sun (closed
+-- Mondays)".
+alter table attractions add column if not exists opening_hours text;
+alter table attractions add column if not exists open_days text;
+
 -- "flights" and "travel" were added as categories, and later "palace",
 -- "cathedral", and "tour" too — the CREATE TABLE above only applies to a
 -- brand-new table, so existing databases need their check constraint
