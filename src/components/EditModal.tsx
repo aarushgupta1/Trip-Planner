@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { Attraction, Category } from '@/lib/types';
-import { CATEGORY_LABELS, CATEGORY_ICONS, generateTripDates, formatDateFull, formatDateShort, getMapsUrl, nextTripDate, timeAgo } from '@/lib/utils';
+import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, generateTripDates, formatDateFull, formatDateShort, getMapsUrl, nextTripDate, timeAgo } from '@/lib/utils';
 import { getCityForDate } from '@/lib/trip';
 import { createAttractionObject, updateAttraction, deleteAttraction, removeTicketUrl } from '@/app/actions';
 import { getEditorName } from '@/lib/editorName';
@@ -226,7 +226,7 @@ export default function EditModal({ attraction, allAttractions, onClose, onSaved
     }
   };
   const tripDates = generateTripDates();
-  const categories = Object.keys(CATEGORY_LABELS) as Category[];
+  const categories = SELECTABLE_CATEGORIES;
 
   const handleSave = () => {
     if (!form.name.trim()) return;

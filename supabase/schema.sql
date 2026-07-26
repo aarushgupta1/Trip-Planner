@@ -27,12 +27,15 @@ alter table attractions add column if not exists location text;
 alter table attractions add column if not exists lat double precision;
 alter table attractions add column if not exists lng double precision;
 
--- "flights" and "travel" were added as categories — the CREATE TABLE above
--- only applies to a brand-new table, so existing databases need their check
--- constraint widened explicitly to actually accept them.
+-- "flights" and "travel" were added as categories, and later "palace",
+-- "cathedral", and "tour" too — the CREATE TABLE above only applies to a
+-- brand-new table, so existing databases need their check constraint
+-- widened explicitly to actually accept them. "museum" and "food" are no
+-- longer offered as choices in the app's category picker, but are left in
+-- this constraint so any existing rows already using them stay valid.
 alter table attractions drop constraint if exists attractions_category_check;
 alter table attractions add constraint attractions_category_check
-  check (category in ('museum', 'food', 'landmark', 'entertainment', 'flights', 'travel', 'other'));
+  check (category in ('museum', 'food', 'landmark', 'palace', 'cathedral', 'tour', 'entertainment', 'flights', 'travel', 'other'));
 
 -- Uploaded ticket files (images/PDFs), stored as public URLs into the
 -- "tickets" storage bucket set up below.

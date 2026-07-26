@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { Attraction, Category } from '@/lib/types';
-import { CATEGORY_LABELS, CATEGORY_ICONS, generateTripDates, formatDateFull, getMapsUrl, CalendarTimezone } from '@/lib/utils';
+import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, generateTripDates, formatDateFull, getMapsUrl, CalendarTimezone } from '@/lib/utils';
 import { getCityForDate } from '@/lib/trip';
 import { getViennaNow } from '@/lib/viennaTime';
 import { createAttractionObject } from '@/app/actions';
@@ -72,7 +72,7 @@ export default function CreateModal({ date, startTime, allAttractions, onClose, 
     onClose();
   };
 
-  const categories = Object.keys(CATEGORY_LABELS) as Category[];
+  const categories = SELECTABLE_CATEGORIES;
 
   const handleCreate = () => {
     if (!form.name.trim() || !isOnline) return;

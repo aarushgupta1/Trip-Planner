@@ -26,6 +26,10 @@ export const CITY_SEGMENTS: CitySegment[] = [
   // Aug 10 is a day trip back to Vienna while still based in Salzburg, so
   // that one day belongs to both cities — see getCitiesForDate below.
   { city: 'Vienna', start: '2026-08-10', end: '2026-08-10' },
+  // Aug 12 is the Salzburg checkout / Prague check-in day, so it also shows
+  // Salzburg (and its weather) alongside Prague in the day header — same
+  // pattern as the Aug 10 overlap above.
+  { city: 'Salzburg', start: '2026-08-12', end: '2026-08-12' },
 ];
 
 export const CITY_INFO: Record<TripCity, { lat: number; lng: number; country: string; timezone: string; shortLabel: string }> = {

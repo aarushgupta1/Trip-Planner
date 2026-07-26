@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Category } from '@/lib/types';
-import { CATEGORY_LABELS, CATEGORY_ICONS } from '@/lib/utils';
+import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES } from '@/lib/utils';
 import { NotificationPermissionState } from '@/lib/pushNotifications';
 import { MoreHorizontal, Map as MapIcon, Bell, BellRing, BellOff, Check } from 'lucide-react';
 
-const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS) as Category[];
+const ALL_CATEGORIES = SELECTABLE_CATEGORIES;
 const SEEN_KEY = 'vienna-more-menu-seen';
 
 interface MoreMenuProps {

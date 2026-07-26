@@ -10,6 +10,10 @@ describe('getCityForDate', () => {
   it('returns Salzburg (the based-in city) for the Aug 10 day trip', () => {
     expect(getCityForDate('2026-08-10')).toBe('Salzburg');
   });
+
+  it('returns Prague (the arrival city) for the Aug 12 transition day', () => {
+    expect(getCityForDate('2026-08-12')).toBe('Prague');
+  });
 });
 
 describe('getCitiesForDate', () => {
@@ -20,6 +24,10 @@ describe('getCitiesForDate', () => {
 
   it('returns both cities for Aug 10, ordered Vienna before Salzburg', () => {
     expect(getCitiesForDate('2026-08-10')).toEqual(['Vienna', 'Salzburg']);
+  });
+
+  it('returns both cities for Aug 12, ordered Salzburg before Prague', () => {
+    expect(getCitiesForDate('2026-08-12')).toEqual(['Salzburg', 'Prague']);
   });
 
   it('does not return duplicate cities', () => {

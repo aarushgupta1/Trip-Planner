@@ -45,6 +45,24 @@ export const CATEGORY_COLORS: Record<Category, { bg: string; text: string; borde
     border: 'border-emerald-200 dark:border-emerald-800',
     dot: 'bg-emerald-400',
   },
+  palace: {
+    bg: 'bg-blue-50 dark:bg-blue-950',
+    text: 'text-blue-700 dark:text-blue-300',
+    border: 'border-blue-200 dark:border-blue-800',
+    dot: 'bg-blue-400',
+  },
+  cathedral: {
+    bg: 'bg-indigo-50 dark:bg-indigo-950',
+    text: 'text-indigo-700 dark:text-indigo-300',
+    border: 'border-indigo-200 dark:border-indigo-800',
+    dot: 'bg-indigo-400',
+  },
+  tour: {
+    bg: 'bg-orange-50 dark:bg-orange-950',
+    text: 'text-orange-700 dark:text-orange-300',
+    border: 'border-orange-200 dark:border-orange-800',
+    dot: 'bg-orange-400',
+  },
   entertainment: {
     bg: 'bg-purple-50 dark:bg-purple-950',
     text: 'text-purple-700 dark:text-purple-300',
@@ -75,6 +93,9 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   museum: 'Museum',
   food: 'Food & Dining',
   landmark: 'Landmark',
+  palace: 'Palace',
+  cathedral: 'Cathedral',
+  tour: 'Tour',
   entertainment: 'Entertainment',
   flights: 'Flight',
   travel: 'Travel',
@@ -85,11 +106,30 @@ export const CATEGORY_ICONS: Record<Category, string> = {
   museum: '🏛️',
   food: '🍽️',
   landmark: '🏰',
+  palace: '🏛️',
+  cathedral: '⛪',
+  tour: '🧭',
   entertainment: '🎭',
   flights: '✈️',
   travel: '🚆',
   other: '📍',
 };
+
+// Categories actually offered in the category picker (create/edit modals)
+// and the filter menu. "museum" and "food" were removed from this list per
+// request — they're kept in the maps above only so any pre-existing event
+// still tagged with one of them keeps rendering correctly instead of
+// breaking; nobody can pick either of them for new/edited events anymore.
+export const SELECTABLE_CATEGORIES: Category[] = [
+  'landmark',
+  'palace',
+  'cathedral',
+  'tour',
+  'entertainment',
+  'flights',
+  'travel',
+  'other',
+];
 
 export function formatDate(dateStr: string): { weekday: string; monthDay: string } {
   const date = new Date(dateStr + 'T12:00:00Z');

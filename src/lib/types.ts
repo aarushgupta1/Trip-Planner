@@ -1,6 +1,11 @@
 import { CalendarTimezone } from './utils';
 
-export type Category = 'museum' | 'food' | 'landmark' | 'entertainment' | 'flights' | 'travel' | 'other';
+// "museum" and "food" are kept here (rather than deleted outright) purely so
+// any already-existing event still tagged with one of them keeps rendering
+// correctly — see SELECTABLE_CATEGORIES in utils.ts for the list actually
+// offered in the category picker and filter menu, which excludes both and
+// adds "palace" / "cathedral" / "tour" instead.
+export type Category = 'museum' | 'food' | 'landmark' | 'palace' | 'cathedral' | 'tour' | 'entertainment' | 'flights' | 'travel' | 'other';
 
 export interface Attraction {
   id: string;
