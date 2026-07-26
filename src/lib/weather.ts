@@ -5,7 +5,6 @@ export interface DayWeather {
   high: number; // °F
   low: number; // °F
   code: number; // WMO weather code
-  isForecast: boolean; // true = actual forecast, false = historical average for the date
 }
 
 interface DailyBlock {
@@ -19,6 +18,13 @@ interface DailyBlock {
 // CITY_SEGMENTS in trip.ts) can belong to more than one — so weather is
 // fetched per (date, city) pair, and a date can map to more than one
 // DayWeather entry.
+//
+// Only real forecasts are ever returned — Open-Meteo's forecast endpoint
+// only covers `forecast_days=16`, so a date further out than that (e.g. a
+// trip planned months ahead) simply has no entry yet rather than showing a
+// guessed "typical weather" average in its place. The day header just shows
+// nothing for that date until it's within the forecast window and the
+// real numbers come back.
 export async function getWeatherForDates(dates: string[]): Promise<Record<string, DayWeather[]>> {
   const result: Record<string, DayWeather[]> = {};
   if (dates.length === 0) return result;
@@ -29,8 +35,6 @@ export async function getWeatherForDates(dates: string[]): Promise<Record<string
   for (const { date, city } of pairs) {
     byCity.set(city, [...(byCity.get(city) ?? []), date]);
   }
-
-  const found = new Set<string>(); // `${date}|${city}`
 
   await Promise.all(
     [...byCity.entries()].map(async ([city, cityDates]) => {
@@ -51,119 +55,21 @@ export async function getWeatherForDates(dates: string[]): Promise<Record<string
                 high: Math.round(daily.temperature_2m_max[i]),
                 low: Math.round(daily.temperature_2m_min[i]),
                 code: daily.weathercode[i],
-                isForecast: true,
               });
-              found.add(`${day}|${city}`);
             }
           });
         }
       } catch {
-        // Forecast unavailable for this city — its dates fall through to
-        // historical averages below.
+        // Forecast unavailable for this city right now — its dates just stay
+        // absent from `result` rather than falling back to a guess.
       }
     })
   );
-
-  const missingPairs = pairs.filter(({ date, city }) => !found.has(`${date}|${city}`));
-  if (missingPairs.length > 0) {
-    await fillHistoricalAverages(missingPairs, result);
-  }
 
   // Deterministic order (Vienna before Salzburg before Prague) regardless of
   // which city's fetch happened to resolve first above.
   for (const date of Object.keys(result)) {
     result[date].sort((a, b) => CITY_ORDER.indexOf(a.city) - CITY_ORDER.indexOf(b.city));
-  }
-
-  return result;
-}
-
-// Dates outside the 16-day forecast window (e.g. a trip planned months out) get
-// a "typical weather" estimate instead: the average of the last 10 years of
-// actual observations for that calendar day, pulled from Open-Meteo's archive.
-// Each city's dates are queried against that city's own coordinates. Mutates
-// `result` in place (pushing onto each date's array) rather than returning a
-// fresh object, since a date may already have another city's entry in it.
-async function fillHistoricalAverages(
-  pairs: { date: string; city: TripCity }[],
-  result: Record<string, DayWeather[]>
-): Promise<void> {
-  const byCity = new Map<TripCity, string[]>();
-  for (const { date, city } of pairs) {
-    byCity.set(city, [...(byCity.get(city) ?? []), date]);
-  }
-
-  await Promise.all(
-    [...byCity.entries()].map(async ([city, cityDates]) => {
-      const cityResult = await getHistoricalAveragesForCity(city, cityDates);
-      for (const date of cityDates) {
-        const entry = cityResult[date];
-        if (entry) (result[date] ??= []).push(entry);
-      }
-    })
-  );
-}
-
-async function getHistoricalAveragesForCity(city: TripCity, dates: string[]): Promise<Record<string, DayWeather>> {
-  const result: Record<string, DayWeather> = {};
-  const { lat, lng, timezone } = CITY_INFO[city];
-
-  const sorted = [...dates].sort();
-  const [, startMonth, startDay] = sorted[0].split('-');
-  const [, endMonth, endDay] = sorted[sorted.length - 1].split('-');
-
-  const currentYear = new Date().getUTCFullYear();
-  const YEARS_OF_HISTORY = 10;
-  const years = Array.from({ length: YEARS_OF_HISTORY }, (_, i) => currentYear - 1 - i);
-
-  const samplesByMonthDay = new Map<string, { high: number; low: number; code: number }[]>();
-
-  await Promise.all(
-    years.map(async (year) => {
-      const start = `${year}-${startMonth}-${startDay}`;
-      const end = `${year}-${endMonth}-${endDay}`;
-      try {
-        const res = await fetch(
-          `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}` +
-            `&start_date=${start}&end_date=${end}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=${encodeURIComponent(timezone)}&temperature_unit=fahrenheit`,
-          { next: { revalidate: 60 * 60 * 24 } }
-        );
-        if (!res.ok) return;
-        const data = (await res.json()) as { daily?: DailyBlock };
-        data.daily?.time.forEach((day, i) => {
-          const high = data.daily!.temperature_2m_max[i];
-          const low = data.daily!.temperature_2m_min[i];
-          const code = data.daily!.weathercode[i];
-          if (high == null || low == null || code == null) return;
-          const monthDay = day.slice(5); // MM-DD
-          const list = samplesByMonthDay.get(monthDay) ?? [];
-          list.push({ high, low, code });
-          samplesByMonthDay.set(monthDay, list);
-        });
-      } catch {
-        // Skip years the archive can't serve; the average just uses fewer samples.
-      }
-    })
-  );
-
-  for (const date of dates) {
-    const samples = samplesByMonthDay.get(date.slice(5));
-    if (!samples || samples.length === 0) continue;
-
-    const avg = (key: 'high' | 'low') =>
-      samples.reduce((sum, s) => sum + s[key], 0) / samples.length;
-
-    const codeCounts = new Map<number, number>();
-    samples.forEach((s) => codeCounts.set(s.code, (codeCounts.get(s.code) ?? 0) + 1));
-    const mostCommonCode = [...codeCounts.entries()].sort((a, b) => b[1] - a[1])[0][0];
-
-    result[date] = {
-      city,
-      high: Math.round(avg('high')),
-      low: Math.round(avg('low')),
-      code: mostCommonCode,
-      isForecast: false,
-    };
   }
 
   return result;

@@ -232,6 +232,7 @@ export async function createHotel(
     currency: Currency;
     confirmation_number: string | null;
     notes: string | null;
+    assigned_dates: string[];
   },
   editedBy?: string | null
 ): Promise<Hotel> {
@@ -255,7 +256,7 @@ export async function createHotel(
 
 export async function updateHotel(
   id: string,
-  data: Partial<Pick<Hotel, 'name' | 'location' | 'check_in' | 'check_out' | 'price' | 'currency' | 'confirmation_number' | 'notes'>>,
+  data: Partial<Pick<Hotel, 'name' | 'location' | 'check_in' | 'check_out' | 'price' | 'currency' | 'confirmation_number' | 'notes' | 'assigned_dates'>>,
   editedBy?: string | null
 ): Promise<void> {
   // Only re-geocode when the location actually changed, same reasoning as

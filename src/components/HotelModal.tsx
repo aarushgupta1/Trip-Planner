@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Hotel, Currency } from '@/lib/types';
 import { createHotel, updateHotel, deleteHotel } from '@/app/actions';
-import { getMapsUrl, timeAgo } from '@/lib/utils';
+import { getMapsUrl, timeAgo, generateTripDates, formatDateShort, datesInRange } from '@/lib/utils';
 import { getEditorName } from '@/lib/editorName';
 import { useOnlineStatus } from '@/lib/useOnlineStatus';
 import LocationAutocomplete from './LocationAutocomplete';
@@ -40,8 +40,18 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
     currency: hotel?.currency ?? ('EUR' as Currency),
     confirmation_number: hotel?.confirmation_number ?? '',
     notes: hotel?.notes ?? '',
+    assigned_dates:
+      hotel?.assigned_dates && hotel.assigned_dates.length > 0
+        ? hotel.assigned_dates
+        : datesInRange(hotel?.check_in ?? '', hotel?.check_out ?? ''),
   };
   const [form, setForm] = useState(initialForm);
+  // Once true, changing check-in/check-out no longer touches the day picker —
+  // otherwise every date tweak would silently clobber a manually customized
+  // (e.g. non-contiguous) set of days. Starts true only if this hotel was
+  // already saved with an explicit assigned_dates list that differs from
+  // what its current range would produce.
+  const [datesTouched, setDatesTouched] = useState(!!hotel?.assigned_dates && hotel.assigned_dates.length > 0);
   const [isPending, startTransition] = useTransition();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
@@ -58,6 +68,29 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
       ? getMapsUrl(hotel)
       : getMapsUrl({ lat: null, lng: null, location: form.location });
   const nights = nightsBetween(form.check_in, form.check_out);
+
+  // Only auto-fills the day picker from check-in/check-out while the user
+  // hasn't manually toggled an individual day themselves — see datesTouched
+  // above.
+  const handleCheckInChange = (v: string) => {
+    setForm((f) => ({ ...f, check_in: v, assigned_dates: datesTouched ? f.assigned_dates : datesInRange(v, f.check_out) }));
+  };
+  const handleCheckOutChange = (v: string) => {
+    setForm((f) => ({ ...f, check_out: v, assigned_dates: datesTouched ? f.assigned_dates : datesInRange(f.check_in, v) }));
+  };
+  const toggleAssignedDate = (date: string) => {
+    setDatesTouched(true);
+    setForm((f) => ({
+      ...f,
+      assigned_dates: f.assigned_dates.includes(date)
+        ? f.assigned_dates.filter((d) => d !== date)
+        : [...f.assigned_dates, date].sort(),
+    }));
+  };
+  const resetDatesToRange = () => {
+    setDatesTouched(false);
+    setForm((f) => ({ ...f, assigned_dates: datesInRange(f.check_in, f.check_out) }));
+  };
 
   const handleClose = () => {
     const hasChanges = (Object.keys(initialForm) as (keyof typeof initialForm)[]).some(
@@ -93,6 +126,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
             currency: form.currency,
             confirmation_number: confirmationNumber,
             notes,
+            assigned_dates: form.assigned_dates,
           };
           // Only send location when it actually changed, so the server
           // doesn't re-geocode on every save (same reasoning as attractions).
@@ -110,6 +144,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
               currency: form.currency,
               confirmation_number: confirmationNumber,
               notes,
+              assigned_dates: form.assigned_dates,
             },
             editedBy
           );
@@ -251,7 +286,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
               <input
                 type="date"
                 value={form.check_in}
-                onChange={(e) => setForm((f) => ({ ...f, check_in: e.target.value }))}
+                onChange={(e) => handleCheckInChange(e.target.value)}
                 disabled={!isOnline}
                 className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
               />
@@ -263,11 +298,54 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
               <input
                 type="date"
                 value={form.check_out}
-                onChange={(e) => setForm((f) => ({ ...f, check_out: e.target.value }))}
+                onChange={(e) => handleCheckOutChange(e.target.value)}
                 disabled={!isOnline}
                 className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </div>
+          </div>
+
+          {/* Days this hotel applies to */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                Days this hotel applies to
+              </label>
+              {datesTouched && (
+                <button
+                  type="button"
+                  onClick={resetDatesToRange}
+                  disabled={!isOnline}
+                  className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline disabled:opacity-50 disabled:no-underline"
+                >
+                  Reset to check-in/check-out
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-4 gap-1">
+              {generateTripDates().map((d) => {
+                const selected = form.assigned_dates.includes(d);
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => toggleAssignedDate(d)}
+                    disabled={!isOnline}
+                    className={[
+                      'px-1.5 py-1.5 rounded-lg border text-[10px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+                      selected
+                        ? 'border-violet-400 dark:border-violet-700 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300'
+                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800',
+                    ].join(' ')}
+                  >
+                    {formatDateShort(d)}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1.5 text-[10px] text-gray-400 dark:text-gray-500 leading-relaxed">
+              Defaults to the check-in/check-out range above — tap a day to customize (e.g. non-contiguous stays). More than one hotel can be assigned to the same day.
+            </p>
           </div>
 
           {/* Price box */}

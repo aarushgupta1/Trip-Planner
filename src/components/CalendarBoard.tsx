@@ -14,7 +14,7 @@ import {
 } from '@dnd-kit/core';
 import { useState, useTransition, useEffect, useRef, useMemo } from 'react';
 import { Attraction, Category, DayNote, Hotel } from '@/lib/types';
-import { generateTripDates, formatDate, timeAgo, formatTimeInZone, nextTripDate } from '@/lib/utils';
+import { generateTripDates, formatDate, timeAgo, formatTimeInZone, nextTripDate, getHotelDates } from '@/lib/utils';
 import { getEditorName } from '@/lib/editorName';
 import { getCitiesForDate, CITY_COLORS } from '@/lib/trip';
 import { DayWeather, weatherCodeInfo } from '@/lib/weather';
@@ -59,13 +59,15 @@ function pageForDate(date: string, daysPerPage: number): number {
 
 
 function DayHeader({
-  date, note, onNoteChange, onNoteCommit, weather, readOnly, isToday,
+  date, note, onNoteChange, onNoteCommit, weather, hotels, onHotelClick, readOnly, isToday,
 }: {
   date: string;
   note: string;
   onNoteChange: (v: string) => void;
   onNoteCommit: (v: string) => void;
   weather?: DayWeather[];
+  hotels: Hotel[];
+  onHotelClick: (hotel: Hotel) => void;
   readOnly: boolean;
   isToday: boolean;
 }) {
@@ -76,6 +78,9 @@ function DayHeader({
   // single one.
   const cities = getCitiesForDate(date);
   const wordOfDay = getWordOfDay(date);
+  // More than one hotel can be assigned to the same day (comparing options,
+  // a mid-stay switch) — same "render one per match" approach as cities.
+  const hotelsToday = hotels.filter((h) => getHotelDates(h).includes(date));
 
   return (
     <div
@@ -113,12 +118,11 @@ function DayHeader({
                   return (
                     <div
                       className="flex items-center justify-center gap-1 text-[10px] text-gray-500 dark:text-gray-400"
-                      title={`${label}${cityWeather.isForecast ? '' : ' (average)'} — ${city}`}
+                      title={`${label} — ${city}`}
                     >
                       <span>{icon}</span>
                       <span className="font-medium">{cityWeather.high}°</span>
                       <span className="text-gray-300 dark:text-gray-600">/{cityWeather.low}°</span>
-                      {!cityWeather.isForecast && <span className="text-gray-300 dark:text-gray-600">~</span>}
                     </div>
                   );
                 })()}
@@ -126,6 +130,21 @@ function DayHeader({
             );
           })}
         </div>
+        {hotelsToday.length > 0 && (
+          <div className="flex items-center justify-center gap-1 mt-1 flex-wrap px-0.5">
+            {hotelsToday.map((hotel) => (
+              <button
+                key={hotel.id}
+                onClick={() => onHotelClick(hotel)}
+                title={`${hotel.name} — tap to view`}
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/60 transition-colors max-w-full"
+              >
+                <span className="shrink-0">🏨</span>
+                <span className="truncate">{hotel.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {isToday && (
           <div
             className="mt-0.5 px-1 text-[9px] leading-tight text-gray-400 dark:text-gray-500 truncate"
@@ -854,6 +873,8 @@ export default function CalendarBoard({
                   date={date}
                   note={dayNotes[date] ?? ''}
                   weather={weather[date]}
+                  hotels={hotels}
+                  onHotelClick={(hotel) => setHotelModalState({ mode: 'edit', hotel })}
                   onNoteChange={(v) => updateDayNote(date, v)}
                   onNoteCommit={(v) => commitDayNote(date, v)}
                   readOnly={!isOnline}
@@ -936,6 +957,7 @@ export default function CalendarBoard({
         <EditModal
           attraction={editingAttraction}
           allAttractions={attractions}
+          hotels={hotels}
           onClose={() => setEditingAttraction(null)}
           onSaved={(updated) => {
             handleAttractionUpdated(updated);
@@ -951,6 +973,7 @@ export default function CalendarBoard({
           date={createSlot?.date}
           startTime={createSlot?.time}
           allAttractions={attractions}
+          hotels={hotels}
           onClose={() => { setCreateSlot(null); setShowQuickAdd(false); }}
           onCreated={(attraction) => {
             handleAttractionCreated(attraction);

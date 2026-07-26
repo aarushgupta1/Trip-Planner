@@ -136,6 +136,15 @@ create table if not exists hotels (
 alter table hotels add column if not exists edited_by text;
 alter table hotels add column if not exists updated_at timestamptz default now();
 
+-- Specific trip days (YYYY-MM-DD strings) this hotel is flagged for, shown
+-- as a badge on the calendar day header and used to find "the" hotel for an
+-- event's day when computing distance/directions. Deliberately not
+-- constrained to be contiguous or unique per day — a stay can cover a
+-- non-contiguous subset of days, and more than one hotel can be assigned to
+-- the same day (comparing options, a mid-stay switch, etc.). Defaults to
+-- empty, in which case the app falls back to the check_in–check_out range.
+alter table hotels add column if not exists assigned_dates text[] not null default '{}';
+
 -- Widen the currency check to add CZK (Prague hotels are priced in Czech
 -- koruna, not euros) — the inline check above only applies on first create,
 -- so existing tables need the constraint replaced explicitly.

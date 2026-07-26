@@ -1,4 +1,4 @@
-import { Category } from './types';
+import { Category, Hotel } from './types';
 
 export const TRIP_START = '2026-08-06';
 export const TRIP_END = '2026-08-16';
@@ -13,17 +13,40 @@ export function generateTripDates(): string[] {
   return dates;
 }
 
-// Used for "duplicate event" — defaults the copy to the following trip day
-// (same time) rather than an exact overlap on the same day, since two
-// same-time events on one day would render stacked directly on top of each
-// other. Falls back to the same date if it's the trip's last day (or isn't
-// a recognized trip date at all), leaving the caller to still run its own
-// conflict check before creating.
+// The trip day right after `date` — used e.g. to label the next scheduled
+// event "Tomorrow" in the header. Falls back to the same date if it's the
+// trip's last day (or isn't a recognized trip date at all).
 export function nextTripDate(date: string): string {
   const dates = generateTripDates();
   const idx = dates.indexOf(date);
   if (idx === -1 || idx === dates.length - 1) return date;
   return dates[idx + 1];
+}
+
+// Every date from start to end, inclusive — used to expand a hotel's
+// check_in/check_out into individual calendar days (see getHotelDates
+// below), and by the hotel form to auto-fill its day picker from those two
+// fields until the user manually customizes it.
+export function datesInRange(start: string, end: string): string[] {
+  if (!start) return [];
+  if (!end || end < start) return [start];
+  const dates: string[] = [];
+  const s = new Date(start + 'T12:00:00Z');
+  const e = new Date(end + 'T12:00:00Z');
+  for (let d = new Date(s); d <= e; d.setUTCDate(d.getUTCDate() + 1)) {
+    dates.push(d.toISOString().split('T')[0]);
+  }
+  return dates;
+}
+
+// The trip days a hotel should show up on (day-header badge, distance-from-
+// hotel on events). Prefers the explicit assigned_dates list — which can be
+// any subset of days, not necessarily contiguous — and falls back to the
+// inclusive check_in–check_out range for hotels saved before assigned_dates
+// existed, so nothing already saved stops showing up.
+export function getHotelDates(hotel: Hotel): string[] {
+  if (hotel.assigned_dates.length > 0) return hotel.assigned_dates;
+  return datesInRange(hotel.check_in ?? '', hotel.check_out ?? '');
 }
 
 export const CATEGORY_COLORS: Record<Category, { bg: string; text: string; border: string; dot: string }> = {
@@ -212,4 +235,42 @@ export function getMapsUrl(a: { lat: number | null; lng: number | null; location
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(a.location)}`;
   }
   return null;
+}
+
+type MapPoint = { lat: number | null; lng: number | null; location: string | null };
+
+function mapsParam(p: MapPoint): string | null {
+  if (p.lat != null && p.lng != null) return `${p.lat},${p.lng}`;
+  if (p.location) return encodeURIComponent(p.location);
+  return null;
+}
+
+// Same Google Maps directions link as getMapsUrl, but with both ends pinned
+// explicitly — used to put the hotel at one end (origin or destination)
+// instead of leaving it to default to wherever the user currently is. Works
+// from geocoded lat/lng when available, or falls back to the raw address
+// text for either end, so it's usable even for a not-yet-saved event that
+// hasn't been geocoded yet.
+export function getDirectionsUrl(origin: MapPoint, destination: MapPoint): string | null {
+  const originParam = mapsParam(origin);
+  const destParam = mapsParam(destination);
+  if (!originParam || !destParam) return null;
+  return `https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${destParam}`;
+}
+
+const EARTH_RADIUS_KM = 6371;
+
+// Straight-line ("as the crow flies") distance in km, not a driving/walking
+// route — computing an actual route distance would mean calling a routing
+// API (a new external dependency, plus usage limits/cost), whereas this
+// only needs the lat/lng both sides already have from geocoding. Labeled as
+// approximate everywhere it's shown so it isn't mistaken for a real route.
+export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
 }

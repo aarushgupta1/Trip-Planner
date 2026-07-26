@@ -51,6 +51,14 @@ export interface Hotel {
   lng: number | null;
   check_in: string | null; // YYYY-MM-DD
   check_out: string | null; // YYYY-MM-DD
+  // Which specific trip days this hotel shows up on (calendar day-header
+  // badge, distance-from-hotel on events, etc.) — not necessarily the same
+  // as the check_in–check_out range: a stay can be flagged for a
+  // non-contiguous subset of days, and more than one hotel can list the
+  // same day (e.g. comparing two options, or a mid-stay switch). Empty for
+  // hotels saved before this existed, in which case callers fall back to
+  // the check_in–check_out range — see getHotelDates in lib/utils.ts.
+  assigned_dates: string[];
   price: number | null;
   currency: Currency;
   confirmation_number: string | null;

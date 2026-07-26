@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Attraction, Category } from '@/lib/types';
-import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, generateTripDates, formatDateFull, getMapsUrl, timeAgo } from '@/lib/utils';
+import { Attraction, Category, Hotel } from '@/lib/types';
+import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, generateTripDates, formatDateFull, getMapsUrl, getDirectionsUrl, distanceKm, getHotelDates, timeAgo } from '@/lib/utils';
 import { getCityForDate } from '@/lib/trip';
 import { updateAttraction, deleteAttraction, removeTicketUrl } from '@/app/actions';
 import { getEditorName } from '@/lib/editorName';
@@ -12,18 +12,19 @@ import { findTimeConflict } from '@/lib/timeUtils';
 import LocationAutocomplete from './LocationAutocomplete';
 import TimeInput from './TimeInput';
 import ConfirmDialog from './ConfirmDialog';
-import { X, Trash2, Save, Upload, FileText, WifiOff, MapPin, Link2, Check } from 'lucide-react';
+import { X, Trash2, Save, Upload, FileText, WifiOff, MapPin, Link2, Check, BedDouble } from 'lucide-react';
 
 interface EditModalProps {
   attraction: Attraction;
   allAttractions: Attraction[];
+  hotels: Hotel[];
   onClose: () => void;
   onSaved: (updated: Attraction) => void;
   onDeleted: (deleted: Attraction) => void;
   readOnly?: boolean;
 }
 
-export default function EditModal({ attraction, allAttractions, onClose, onSaved, onDeleted, readOnly = false }: EditModalProps) {
+export default function EditModal({ attraction, allAttractions, hotels, onClose, onSaved, onDeleted, readOnly = false }: EditModalProps) {
   // Legacy unscheduled events (from before the "Unscheduled" option was
   // removed) fall back to the trip's first day rather than an empty value,
   // since every event now needs a real scheduled date.
@@ -60,6 +61,20 @@ export default function EditModal({ attraction, allAttractions, onClose, onSaved
     form.location.trim() === (attraction.location ?? '').trim()
       ? getMapsUrl(attraction)
       : getMapsUrl({ lat: null, lng: null, location: form.location });
+
+  // The hotel(s) assigned to this event's day — usually one, but more than
+  // one can be assigned to the same day (comparing options, a mid-stay
+  // switch), so this shows one distance/directions line per match rather
+  // than assuming a single "the" hotel.
+  const hotelsToday = form.scheduled_date
+    ? hotels.filter((h) => getHotelDates(h).includes(form.scheduled_date))
+    : [];
+  // Same "prefer the saved geocode, fall back to whatever's currently typed"
+  // reasoning as mapsUrl above.
+  const destinationPoint =
+    form.location.trim() === (attraction.location ?? '').trim()
+      ? { lat: attraction.lat, lng: attraction.lng, location: attraction.location }
+      : { lat: null, lng: null, location: form.location };
 
   // Copies a link that opens straight to this event (?event=<id>) — handled
   // in CalendarBoard, which reads it on mount, jumps to the right day, and
@@ -396,6 +411,47 @@ export default function EditModal({ attraction, allAttractions, onClose, onSaved
               placeholder="Address or place name (Vienna, Salzburg, or Prague)"
             />
           </div>
+
+          {/* Distance/directions from the day's hotel(s) — only shown when
+              there's actually a hotel assigned to this event's day and a
+              location to measure to. */}
+          {hotelsToday.length > 0 && (destinationPoint.lat != null || destinationPoint.location) && (
+            <div className="space-y-1.5">
+              {hotelsToday.map((hotel) => {
+                const directionsUrl = getDirectionsUrl(hotel, destinationPoint);
+                const dist =
+                  hotel.lat != null && hotel.lng != null && destinationPoint.lat != null && destinationPoint.lng != null
+                    ? distanceKm({ lat: hotel.lat, lng: hotel.lng }, { lat: destinationPoint.lat, lng: destinationPoint.lng })
+                    : null;
+                return (
+                  <div
+                    key={hotel.id}
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-900 text-[11px]"
+                  >
+                    <span className="flex items-center gap-1.5 text-violet-700 dark:text-violet-300 min-w-0" title="Straight-line distance, not a driving/walking route">
+                      <BedDouble size={12} className="shrink-0" />
+                      <span className="truncate">
+                        {dist != null
+                          ? `≈ ${dist < 10 ? dist.toFixed(1) : Math.round(dist)} km from ${hotel.name}`
+                          : `From ${hotel.name}`}
+                      </span>
+                    </span>
+                    {directionsUrl && (
+                      <a
+                        href={directionsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="shrink-0 font-semibold text-violet-600 dark:text-violet-400 hover:underline"
+                      >
+                        Directions
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Hours + days open */}
           <div className="grid grid-cols-2 gap-5">

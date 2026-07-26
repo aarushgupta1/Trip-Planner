@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Attraction, Category } from '@/lib/types';
-import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, generateTripDates, formatDateFull, getMapsUrl, CalendarTimezone } from '@/lib/utils';
+import { Attraction, Category, Hotel } from '@/lib/types';
+import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, generateTripDates, formatDateFull, getMapsUrl, getDirectionsUrl, getHotelDates, CalendarTimezone } from '@/lib/utils';
 import { getCityForDate } from '@/lib/trip';
 import { getViennaNow } from '@/lib/viennaTime';
 import { createAttractionObject } from '@/app/actions';
@@ -14,7 +14,7 @@ import { useOnlineStatus } from '@/lib/useOnlineStatus';
 import LocationAutocomplete from './LocationAutocomplete';
 import TimeInput from './TimeInput';
 import ConfirmDialog from './ConfirmDialog';
-import { X, Upload, FileText, WifiOff, MapPin } from 'lucide-react';
+import { X, Upload, FileText, WifiOff, MapPin, BedDouble } from 'lucide-react';
 
 interface CreateModalProps {
   // Both are provided when opened by clicking a specific grid slot. Left
@@ -24,11 +24,12 @@ interface CreateModalProps {
   date?: string;
   startTime?: string;
   allAttractions: Attraction[];
+  hotels: Hotel[];
   onClose: () => void;
   onCreated: (attraction: Attraction) => void;
 }
 
-export default function CreateModal({ date, startTime, allAttractions, onClose, onCreated }: CreateModalProps) {
+export default function CreateModal({ date, startTime, allAttractions, hotels, onClose, onCreated }: CreateModalProps) {
   const tripDates = generateTripDates();
   const defaultDate = date ?? (tripDates.includes(getViennaNow().date) ? getViennaNow().date : tripDates[0]);
   const defaultStartTime = startTime ?? '';
@@ -62,6 +63,12 @@ export default function CreateModal({ date, startTime, allAttractions, onClose, 
   // plain-text link built from whatever's currently typed, so this shows up
   // immediately rather than only after the first save.
   const mapsUrl = getMapsUrl({ lat: null, lng: null, location: form.location });
+
+  // The hotel(s) assigned to the currently-picked day — same "more than one
+  // can apply" reasoning as the day header badges. No distance number here
+  // (a brand new event has no geocoded lat/lng yet), just a directions link
+  // built from address text on both ends.
+  const hotelsToday = hotels.filter((h) => getHotelDates(h).includes(form.scheduled_date));
 
   const handleClose = () => {
     const hasChanges =
@@ -301,6 +308,37 @@ export default function CreateModal({ date, startTime, allAttractions, onClose, 
               placeholder="Address or place name (Vienna, Salzburg, or Prague)"
             />
           </div>
+
+          {/* Directions from the day's hotel(s) — no distance shown yet since
+              a brand new event has no geocoded lat/lng until it's saved. */}
+          {hotelsToday.length > 0 && form.location.trim() && (
+            <div className="space-y-1.5">
+              {hotelsToday.map((hotel) => {
+                const directionsUrl = getDirectionsUrl(hotel, { lat: null, lng: null, location: form.location });
+                if (!directionsUrl) return null;
+                return (
+                  <div
+                    key={hotel.id}
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-900 text-[11px]"
+                  >
+                    <span className="flex items-center gap-1.5 text-violet-700 dark:text-violet-300 min-w-0">
+                      <BedDouble size={12} className="shrink-0" />
+                      <span className="truncate">From {hotel.name}</span>
+                    </span>
+                    <a
+                      href={directionsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="shrink-0 font-semibold text-violet-600 dark:text-violet-400 hover:underline"
+                    >
+                      Directions
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Hours + days open */}
           <div className="grid grid-cols-2 gap-5">
