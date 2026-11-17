@@ -63,7 +63,7 @@ export default function HotelsSidebar({
             <BedDouble size={28} strokeWidth={1.5} />
             <div className="text-xs leading-relaxed">
               No lodging yet.<br />
-              Add a hotel, rental or stay to track dates and price.
+              Add a lodging to track dates and price.
             </div>
           </div>
         ) : (
