@@ -1,60 +1,117 @@
-import { getAttractions, getDayNotes, getHotels } from './actions';
-import CalendarBoard from '@/components/CalendarBoardClient';
+import Link from 'next/link';
+import { Plus, MapPin, AlertTriangle, Plane } from 'lucide-react';
+import { getTrips } from '@/app/trips/actions';
+import { getCurrentUser, isSupabaseConfigured } from '@/lib/supabase/server';
+import { formatCityList } from '@/lib/trip';
+import { formatDateRange } from '@/lib/utils';
+import TripCard from '@/components/TripCard';
+import UserMenu from '@/components/UserMenu';
 import ThemeToggle from '@/components/ThemeToggle';
-import EditorNameBadge from '@/components/EditorNameBadge';
-import PresenceIndicator from '@/components/PresenceIndicator';
-import InstallPrompt from '@/components/InstallPrompt';
-import { generateTripDates } from '@/lib/utils';
-import { getWeatherForDates } from '@/lib/weather';
-import { getTravelSegments } from '@/lib/travel';
-import { MapPin, AlertTriangle } from 'lucide-react';
 
-export default async function HomePage() {
-  const isConfigured =
-    !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+export const metadata = { title: 'My trips · Trip Planner' };
 
-  const attractions = await getAttractions();
-  const weather = await getWeatherForDates(generateTripDates());
-  const travelSegments = await getTravelSegments(attractions);
-  const dayNotes = await getDayNotes();
-  const hotels = await getHotels();
+function tripStatus(start: string, end: string, today: string): { label: string; tone: 'live' | 'soon' | 'past' } {
+  if (today > end) return { label: 'Past', tone: 'past' };
+  if (today >= start) return { label: 'In progress', tone: 'live' };
+  const days = Math.round((new Date(start + 'T12:00:00Z').getTime() - new Date(today + 'T12:00:00Z').getTime()) / 86_400_000);
+  return { label: days === 1 ? 'Starts tomorrow' : `In ${days} days`, tone: 'soon' };
+}
+
+export default async function DashboardPage() {
+  const configured = isSupabaseConfigured();
+  const user = await getCurrentUser();
+  const trips = configured && user ? await getTrips() : [];
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Current and upcoming first (soonest first), then past trips (most recent first).
+  const current = trips.filter((t) => t.end_date >= today).sort((a, b) => a.start_date.localeCompare(b.start_date));
+  const past = trips.filter((t) => t.end_date < today).sort((a, b) => b.start_date.localeCompare(a.start_date));
+
+  const displayName = (user?.user_metadata?.full_name as string | undefined) ?? '';
+
+  const renderCard = (t: (typeof trips)[number]) => (
+    <TripCard
+      key={t.id}
+      id={t.id}
+      name={t.name}
+      cities={formatCityList(t.cities)}
+      dateRange={formatDateRange(t.start_date, t.end_date)}
+      status={tripStatus(t.start_date, t.end_date, today)}
+    />
+  );
 
   return (
-    <main className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-950">
-      <header className="h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between gap-2 px-3 sm:px-5 shrink-0 shadow-sm">
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
-          <MapPin size={16} className="shrink-0 text-blue-600 dark:text-blue-400" />
-          <div className="min-w-0">
-            <span className="block sm:inline truncate font-bold text-gray-900 dark:text-gray-100 text-sm sm:text-base">Vienna · Salzburg · Prague</span>
-            <span className="hidden sm:inline ml-2 text-xs text-gray-400 dark:text-gray-500">Aug 6 – 16, 2026</span>
-          </div>
+    <main className="min-h-dvh bg-gray-50 dark:bg-gray-950">
+      <header className="h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 sm:px-6 shadow-sm">
+        <div className="flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
+            <MapPin size={16} />
+          </span>
+          <span className="font-bold text-gray-900 dark:text-gray-100">Trip Planner</span>
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          <InstallPrompt />
-          <PresenceIndicator />
-          <EditorNameBadge />
+        <div className="flex items-center gap-2">
           <ThemeToggle />
+          {user && <UserMenu displayName={displayName} email={user.email ?? ''} />}
         </div>
       </header>
 
-      {!isConfigured && (
-        <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 px-5 py-2.5 text-amber-800 dark:text-amber-300 text-xs shrink-0">
-          <AlertTriangle size={14} className="shrink-0" />
-          <span>
-            Supabase is not configured. Copy <code className="font-mono bg-amber-100 dark:bg-amber-900/60 px-1 rounded">.env.local.example</code> to{' '}
-            <code className="font-mono bg-amber-100 dark:bg-amber-900/60 px-1 rounded">.env.local</code> and add your project credentials to save data.
-          </span>
-        </div>
-      )}
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
+        {!configured && (
+          <div className="mb-6 flex items-center gap-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-2.5 text-amber-800 dark:text-amber-300 text-xs">
+            <AlertTriangle size={14} className="shrink-0" />
+            <span>
+              Supabase is not configured. Copy <code className="font-mono bg-amber-100 dark:bg-amber-900/60 px-1 rounded">.env.local.example</code> to{' '}
+              <code className="font-mono bg-amber-100 dark:bg-amber-900/60 px-1 rounded">.env.local</code> and add your project credentials.
+            </span>
+          </div>
+        )}
 
-      <div className="flex-1 overflow-hidden">
-        <CalendarBoard
-          initialAttractions={attractions}
-          weather={weather}
-          travelSegments={travelSegments}
-          initialDayNotes={dayNotes}
-          initialHotels={hotels}
-        />
+        <div className="flex items-end justify-between gap-3 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {displayName ? `Hi ${displayName.split(' ')[0]}` : 'My trips'}
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              {trips.length === 0 ? 'Where to next?' : 'Pick up where you left off, or start a new adventure.'}
+            </p>
+          </div>
+          <Link
+            href="/trips/new"
+            className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+          >
+            <Plus size={15} />
+            New trip
+          </Link>
+        </div>
+
+        {trips.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-14 text-center">
+            <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
+              <Plane size={22} />
+            </span>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">No trips yet</p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Choose where you’re going and your dates — we’ll set up a day-by-day planner.
+            </p>
+            <Link
+              href="/trips/new"
+              className="mt-5 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+            >
+              <Plus size={15} />
+              Plan your first trip
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {current.length > 0 && <div className="grid gap-3 sm:grid-cols-2">{current.map(renderCard)}</div>}
+            {past.length > 0 && (
+              <section>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-3">Past trips</h2>
+                <div className="grid gap-3 sm:grid-cols-2">{past.map(renderCard)}</div>
+              </section>
+            )}
+          </div>
+        )}
       </div>
     </main>
   );

@@ -14,9 +14,10 @@ import {
 } from '@dnd-kit/core';
 import { useState, useTransition, useEffect, useRef, useMemo } from 'react';
 import { Attraction, Category, DayNote, Hotel } from '@/lib/types';
-import { generateTripDates, formatDate, timeAgo, formatTimeInZone, nextTripDate, getHotelDates } from '@/lib/utils';
+import { formatDate, timeAgo, formatTimeInZone, getHotelDates } from '@/lib/utils';
 import { getEditorName } from '@/lib/editorName';
-import { getCitiesForDate, CITY_COLORS } from '@/lib/trip';
+import { cityKey } from '@/lib/trip';
+import { useTrip } from './TripProvider';
 import { DayWeather, weatherCodeInfo } from '@/lib/weather';
 import { getWordOfDay } from '@/lib/wordOfDay';
 import { TravelSegment, TravelMode } from '@/lib/travel';
@@ -33,7 +34,8 @@ import {
 } from '@/lib/timeUtils';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useOnlineStatus } from '@/lib/useOnlineStatus';
-import { getViennaNow, useNowInVienna } from '@/lib/viennaClock';
+import { getNowInZone } from '@/lib/tripTime';
+import { useNowInZone } from '@/lib/tripClock';
 import { usePushNotifications } from '@/lib/pushNotifications';
 import { updateAttraction, upsertDayNote, restoreAttraction, restoreHotel } from '@/app/actions';
 import DayColumn from './DayColumn';
@@ -52,8 +54,8 @@ import { ChevronLeft, ChevronRight, Pencil, PanelLeftOpen, WifiOff, CalendarDays
 // render entirely instead of crashing it.
 const MapView = dynamic(() => import('./MapView'), { ssr: false });
 
-function pageForDate(date: string, daysPerPage: number): number {
-  const idx = generateTripDates().indexOf(date);
+function pageForDate(dates: string[], date: string, daysPerPage: number): number {
+  const idx = dates.indexOf(date);
   return idx === -1 ? 0 : Math.floor(idx / daysPerPage);
 }
 
@@ -73,11 +75,12 @@ function DayHeader({
 }) {
   const { weekday, monthDay } = formatDate(date);
   const [editing, setEditing] = useState(false);
-  // A day-trip day (e.g. Aug 10) belongs to more than one city — everything
+  // A day-trip day (e.g. a day trip) belongs to more than one city — everything
   // below renders one badge/weather-line per city rather than assuming a
   // single one.
+  const { trip, getCitiesForDate, cityColor } = useTrip();
   const cities = getCitiesForDate(date);
-  const wordOfDay = getWordOfDay(date);
+  const wordOfDay = getWordOfDay(trip, date);
   // More than one hotel can be assigned to the same day (comparing options,
   // a mid-stay switch) — same "render one per match" approach as cities.
   const hotelsToday = hotels.filter((h) => getHotelDates(h).includes(date));
@@ -98,27 +101,27 @@ function DayHeader({
         </div>
         {/* One column per city — badge on top, that city's weather directly
             beneath it — rather than a row of badges followed by a separate
-            stack of weather lines, so on a multi-city day (e.g. Aug 10) it's
+            stack of weather lines, so on a multi-city day it's
             immediately clear which reading goes with which place. */}
         <div className="flex items-start justify-center gap-2 mt-0.5 flex-wrap">
           {cities.map((city) => {
-            const cityColor = CITY_COLORS[city];
-            const cityWeather = weather?.find((w) => w.city === city);
+            const colors = cityColor(city);
+            const cityWeather = weather?.find((w) => w.city === cityKey(city));
             return (
-              <div key={city} className="flex flex-col items-center gap-0.5">
+              <div key={cityKey(city)} className="flex flex-col items-center gap-0.5">
                 <div
-                  className={['inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide', cityColor.bg, cityColor.text].join(' ')}
-                  title={city}
+                  className={['inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide', colors.bg, colors.text].join(' ')}
+                  title={city.name}
                 >
-                  <span className={['w-1 h-1 rounded-full', cityColor.dot].join(' ')} />
-                  {city}
+                  <span className={['w-1 h-1 rounded-full', colors.dot].join(' ')} />
+                  {city.name}
                 </div>
                 {cityWeather && (() => {
                   const { icon, label } = weatherCodeInfo(cityWeather.code);
                   return (
                     <div
                       className="flex items-center justify-center gap-1 text-[10px] text-gray-500 dark:text-gray-400"
-                      title={`${label} — ${city}`}
+                      title={`${label} — ${city.name}`}
                     >
                       <span>{icon}</span>
                       <span className="font-medium">{cityWeather.high}°</span>
@@ -145,7 +148,7 @@ function DayHeader({
             ))}
           </div>
         )}
-        {isToday && (
+        {isToday && wordOfDay && (
           <div
             className="mt-0.5 px-1 text-[9px] leading-tight text-gray-400 dark:text-gray-500 truncate"
             title={`${wordOfDay.language} word of the day: ${wordOfDay.word} — ${wordOfDay.translation}`}
@@ -254,7 +257,8 @@ export default function CalendarBoard({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [, startTransition] = useTransition();
   const isOnline = useOnlineStatus();
-  const now = useNowInVienna();
+  const { trip, dates: TRIP_DATES, nextDate, homeShiftMinutes } = useTrip();
+  const now = useNowInZone(trip.timezone);
   const [lastSynced, setLastSynced] = useState<number | null>(null);
   // Tracks whether the initial "jump to today's page" has happened yet, so
   // later window resizes fall back to the normal reset-to-page-0 behavior
@@ -301,7 +305,7 @@ export default function CalendarBoard({
           // On first load, open straight to whichever page today falls on
           // (if today's within the trip) instead of always starting at
           // page 1 — the whole point of this view is "what's happening now."
-          setCurrentPage(pageForDate(getViennaNow().date, next));
+          setCurrentPage(pageForDate(TRIP_DATES, getNowInZone(trip.timezone).date, next));
         } else if (prev !== next) {
           setCurrentPage(0);
         }
@@ -313,7 +317,7 @@ export default function CalendarBoard({
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
-  }, []);
+  }, [TRIP_DATES, trip.timezone]);
 
   // Opens straight to a specific event when the page was loaded via a
   // shared link (?event=<id>, copied from EditModal's link button) —
@@ -331,7 +335,7 @@ export default function CalendarBoard({
       if (target.scheduled_date) {
         const w = window.innerWidth;
         const dpp = w < 640 ? 1 : w < 1024 ? 2 : DAYS_PER_PAGE;
-        setCurrentPage(pageForDate(target.scheduled_date, dpp));
+        setCurrentPage(pageForDate(TRIP_DATES, target.scheduled_date, dpp));
       }
     }
     window.history.replaceState(null, '', window.location.pathname);
@@ -376,18 +380,18 @@ export default function CalendarBoard({
     localStorage.setItem('vienna-travel-modes', JSON.stringify(travelModes));
   }, [travelModes]);
 
-  // Realtime: sync changes made by other family members
+  // Realtime: sync changes made on your other devices
   useEffect(() => {
     const client = getSupabaseClient();
     if (!client) return;
 
     const channel = client
-      .channel('attractions-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'attractions' }, (payload: any) => {
+      .channel(`attractions-realtime-${trip.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'attractions', filter: `trip_id=eq.${trip.id}` }, (payload: any) => {
         const row = payload.new as Attraction;
         setAttractions((prev) => prev.find((a) => a.id === row.id) ? prev : [...prev, row]);
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'attractions' }, (payload: any) => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'attractions', filter: `trip_id=eq.${trip.id}` }, (payload: any) => {
         const row = payload.new as Attraction;
         setAttractions((prev) => prev.map((a) => a.id === row.id ? row : a));
       })
@@ -398,9 +402,9 @@ export default function CalendarBoard({
       .subscribe();
 
     return () => { client.removeChannel(channel); };
-  }, []);
+  }, [trip.id]);
 
-  // Realtime: sync day notes made by other family members
+  // Realtime: sync day notes made on your other devices
   useEffect(() => {
     const client = getSupabaseClient();
     if (!client) return;
@@ -411,9 +415,9 @@ export default function CalendarBoard({
     };
 
     const channel = client
-      .channel('day-notes-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'day_notes' }, upsertNote)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'day_notes' }, upsertNote)
+      .channel(`day-notes-realtime-${trip.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'day_notes', filter: `trip_id=eq.${trip.id}` }, upsertNote)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'day_notes', filter: `trip_id=eq.${trip.id}` }, upsertNote)
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'day_notes' }, (payload: any) => {
         const date = (payload.old as { date: string }).date;
         setDayNotes((prev) => {
@@ -425,20 +429,20 @@ export default function CalendarBoard({
       .subscribe();
 
     return () => { client.removeChannel(channel); };
-  }, []);
+  }, [trip.id]);
 
-  // Realtime: sync hotels added/edited/deleted by other family members
+  // Realtime: sync hotels changed on your other devices
   useEffect(() => {
     const client = getSupabaseClient();
     if (!client) return;
 
     const channel = client
-      .channel('hotels-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'hotels' }, (payload: any) => {
+      .channel(`hotels-realtime-${trip.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'hotels', filter: `trip_id=eq.${trip.id}` }, (payload: any) => {
         const row = payload.new as Hotel;
         setHotels((prev) => prev.find((h) => h.id === row.id) ? prev : [...prev, row]);
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'hotels' }, (payload: any) => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'hotels', filter: `trip_id=eq.${trip.id}` }, (payload: any) => {
         const row = payload.new as Hotel;
         setHotels((prev) => prev.map((h) => h.id === row.id ? row : h));
       })
@@ -449,7 +453,7 @@ export default function CalendarBoard({
       .subscribe();
 
     return () => { client.removeChannel(channel); };
-  }, []);
+  }, [trip.id]);
 
   const handleHotelSaved = (hotel: Hotel) => {
     setHotels((prev) => {
@@ -478,7 +482,7 @@ export default function CalendarBoard({
   const commitDayNote = (date: string, text: string) => {
     startTransition(async () => {
       try {
-        await upsertDayNote(date, text, getEditorName());
+        await upsertDayNote(trip.id, date, text, getEditorName());
       } catch {
         setToastMsg("Couldn't save day note — check your connection and try again.");
       }
@@ -510,7 +514,6 @@ export default function CalendarBoard({
     useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 8 } })
   );
 
-  const TRIP_DATES = generateTripDates();
   const totalPages = Math.ceil(TRIP_DATES.length / daysPerPage);
   const visibleDates = TRIP_DATES.slice(
     currentPage * daysPerPage,
@@ -553,9 +556,9 @@ export default function CalendarBoard({
   const nextEventDayLabel = useMemo(() => {
     if (!nextEvent || !now) return null;
     if (nextEvent.scheduled_date === now.date) return 'Today';
-    if (nextEvent.scheduled_date === nextTripDate(now.date)) return 'Tomorrow';
+    if (nextEvent.scheduled_date === nextDate(now.date)) return 'Tomorrow';
     return formatDate(nextEvent.scheduled_date!).weekday;
-  }, [nextEvent, now]);
+  }, [nextEvent, now, nextDate]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveAttraction(attractions.find((a) => a.id === event.active.id) ?? null);
@@ -740,7 +743,7 @@ export default function CalendarBoard({
             {/* Utility bar — search and the less time-critical controls live
                 here, above the main nav strip, so day-to-day navigation
                 isn't competing with them for space. There's no timezone
-                toggle anymore: every event just shows Vienna/local time,
+                toggle anymore: every event just shows local time,
                 except one flagged "show in Eastern" (e.g. a return flight)
                 which always renders in ET regardless — a fixed per-event
                 pin instead of a global switch, since the two timezones
@@ -773,7 +776,7 @@ export default function CalendarBoard({
                 <div className="flex-1 min-w-0 flex justify-center px-1">
                   <button
                     onClick={() => {
-                      setCurrentPage(pageForDate(nextEvent.scheduled_date!, daysPerPage));
+                      setCurrentPage(pageForDate(TRIP_DATES, nextEvent.scheduled_date!, daysPerPage));
                       setEditingAttraction(nextEvent);
                     }}
                     className="flex items-center gap-1.5 max-w-[65vw] sm:max-w-[280px] px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -782,7 +785,7 @@ export default function CalendarBoard({
                     <ArrowRight size={11} className="shrink-0 text-blue-500 dark:text-blue-400" />
                     <span className="text-[11px] font-medium truncate">{nextEvent.name}</span>
                     <span className="text-[11px] opacity-70 shrink-0 tabular-nums">
-                      {nextEventDayLabel} · {formatTimeInZone(nextEvent.start_time!, nextEvent.departure_timezone)}
+                      {nextEventDayLabel} · {formatTimeInZone(nextEvent.start_time!, nextEvent.departure_timezone, homeShiftMinutes)}
                     </span>
                   </button>
                 </div>
@@ -850,9 +853,9 @@ export default function CalendarBoard({
                 </button>
 
                 {/* Jump to today — only relevant while the trip is actually underway */}
-                {now && generateTripDates().includes(now.date) && (
+                {now && TRIP_DATES.includes(now.date) && (
                   <button
-                    onClick={() => setCurrentPage(pageForDate(now.date, daysPerPage))}
+                    onClick={() => setCurrentPage(pageForDate(TRIP_DATES, now.date, daysPerPage))}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors"
                     title="Jump to today"
                   >
@@ -987,7 +990,7 @@ export default function CalendarBoard({
         <SearchJumpBox
           attractions={attractions}
           onClose={() => setShowSearch(false)}
-          onJumpToDate={(date) => setCurrentPage(pageForDate(date, daysPerPage))}
+          onJumpToDate={(date) => setCurrentPage(pageForDate(TRIP_DATES, date, daysPerPage))}
           onSelectAttraction={(attraction) => setEditingAttraction(attraction)}
         />
       )}
@@ -996,7 +999,7 @@ export default function CalendarBoard({
         <MapView
           attractions={attractions.filter((a) => !hiddenCategories.includes(a.category))}
           hotels={hotels}
-          initialDate={now && generateTripDates().includes(now.date) ? now.date : visibleDates[0]}
+          initialDate={now && TRIP_DATES.includes(now.date) ? now.date : visibleDates[0]}
           onClose={() => setShowMap(false)}
         />
       )}

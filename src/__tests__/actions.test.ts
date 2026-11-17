@@ -21,11 +21,13 @@ function makeBuilder() {
   return proxy;
 }
 
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn(() => ({
+// Server actions run as the signed-in user via a cookie-bound client; stub
+// that client with the same chainable builder.
+vi.mock('@/lib/supabase/server', () => ({
+  isSupabaseConfigured: () => !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  createSupabaseServer: vi.fn(async () => ({
     from: vi.fn(() => makeBuilder()),
-    channel: vi.fn(() => ({ on: vi.fn().mockReturnThis(), subscribe: vi.fn() })),
-    removeChannel: vi.fn(),
+    rpc: vi.fn(() => makeBuilder()),
   })),
 }));
 
@@ -34,8 +36,11 @@ vi.mock('@supabase/supabase-js', () => ({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+const TRIP_ID = 'trip-1';
+
 const SAMPLE: Attraction = {
   id: 'abc-123',
+  trip_id: TRIP_ID,
   name: 'Belvedere Palace',
   description: 'Baroque palace with Klimt paintings',
   category: 'museum',
@@ -52,8 +57,8 @@ const SAMPLE: Attraction = {
   edited_by: null,
   updated_at: '2026-01-01T00:00:00Z',
   created_at: '2026-01-01T00:00:00Z',
-  departure_timezone: 'vienna',
-  arrival_timezone: 'vienna',
+  departure_timezone: 'local',
+  arrival_timezone: 'local',
 };
 
 function setEnv() {
@@ -73,14 +78,14 @@ describe('getAttractions', () => {
   it('returns an empty array when Supabase is not configured', async () => {
     clearEnv();
     const { getAttractions } = await import('@/app/actions');
-    await expect(getAttractions()).resolves.toEqual([]);
+    await expect(getAttractions(TRIP_ID)).resolves.toEqual([]);
   });
 
   it('returns attractions from Supabase when configured', async () => {
     setEnv();
     mockResult = { data: [SAMPLE], error: null };
     const { getAttractions } = await import('@/app/actions');
-    const result = await getAttractions();
+    const result = await getAttractions(TRIP_ID);
     expect(result).toEqual([SAMPLE]);
   });
 
@@ -88,7 +93,7 @@ describe('getAttractions', () => {
     setEnv();
     mockResult = { data: null, error: { message: 'connection refused' } };
     const { getAttractions } = await import('@/app/actions');
-    await expect(getAttractions()).rejects.toThrow('connection refused');
+    await expect(getAttractions(TRIP_ID)).rejects.toThrow('connection refused');
   });
 });
 
@@ -101,6 +106,7 @@ describe('createAttractionObject', () => {
     mockResult = { data: SAMPLE, error: null };
     const { createAttractionObject } = await import('@/app/actions');
     const result = await createAttractionObject({
+      trip_id: TRIP_ID,
       name: SAMPLE.name,
       description: SAMPLE.description,
       category: SAMPLE.category,
@@ -118,6 +124,7 @@ describe('createAttractionObject', () => {
     const { createAttractionObject } = await import('@/app/actions');
     await expect(
       createAttractionObject({
+        trip_id: TRIP_ID,
         name: 'x',
         description: null,
         category: 'other',

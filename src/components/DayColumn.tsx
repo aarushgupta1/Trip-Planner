@@ -141,7 +141,7 @@ interface DayColumnProps {
   travelModes: Record<string, TravelMode>;
   onTravelModeChange: (pairKey: string, mode: TravelMode) => void;
   readOnly?: boolean;
-  // Minutes-since-midnight (Vienna-local) for "right now", only passed in for
+  // Minutes-since-midnight (destination-local) for "right now", only passed in for
   // whichever column is actually today — draws the current-time line.
   nowMinutes?: number | null;
 }

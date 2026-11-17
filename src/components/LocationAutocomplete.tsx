@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { searchLocations } from '@/app/actions';
 import { GeocodeSuggestion } from '@/lib/geocode';
+import { useTrip } from './TripProvider';
 
 interface LocationAutocompleteProps {
   name?: string;
@@ -25,6 +26,7 @@ export default function LocationAutocomplete({
   className,
   disabled = false,
 }: LocationAutocompleteProps) {
+  const { trip } = useTrip();
   const isControlled = value !== undefined;
   const [internalValue, setInternalValue] = useState(defaultValue ?? '');
   const text = isControlled ? value! : internalValue;
@@ -59,7 +61,7 @@ export default function LocationAutocomplete({
 
     const requestId = ++requestIdRef.current;
     debounceRef.current = setTimeout(async () => {
-      const results = await searchLocations(v);
+      const results = await searchLocations(v, trip.id);
       if (requestIdRef.current === requestId) setSuggestions(results);
     }, DEBOUNCE_MS);
   };

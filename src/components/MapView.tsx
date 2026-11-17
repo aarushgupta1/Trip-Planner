@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Attraction, Hotel } from '@/lib/types';
-import { CATEGORY_ICONS, formatDateFull, formatTime, generateTripDates } from '@/lib/utils';
-import { getCityForDate, CITY_INFO } from '@/lib/trip';
+import { CATEGORY_ICONS, formatDateFull, formatTime } from '@/lib/utils';
+import { useTrip } from './TripProvider';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface MapViewProps {
@@ -19,7 +19,7 @@ interface MapViewProps {
 // ssr: false in CalendarBoard) — Leaflet touches `window`/`document` at
 // import time, which would blow up a server render otherwise.
 export default function MapView({ attractions, hotels, initialDate, onClose }: MapViewProps) {
-  const tripDates = useMemo(() => generateTripDates(), []);
+  const { dates: tripDates, getCityForDate } = useTrip();
   const [date, setDate] = useState(initialDate);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -49,7 +49,7 @@ export default function MapView({ attractions, hotels, initialDate, onClose }: M
   // Create the map once and tear it down on unmount.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const cityCenter = CITY_INFO[getCityForDate(date)];
+    const cityCenter = getCityForDate(date);
     const map = L.map(containerRef.current, { zoomControl: true }).setView([cityCenter.lat, cityCenter.lng], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
@@ -120,10 +120,10 @@ export default function MapView({ attractions, hotels, initialDate, onClose }: M
     if (points.length > 0) {
       map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 15 });
     } else {
-      const cityCenter = CITY_INFO[getCityForDate(date)];
+      const cityCenter = getCityForDate(date);
       map.setView([cityCenter.lat, cityCenter.lng], 12);
     }
-  }, [dayEvents, hotel, date]);
+  }, [dayEvents, hotel, date, getCityForDate]);
 
   const dateIdx = tripDates.indexOf(date);
 
@@ -149,7 +149,7 @@ export default function MapView({ attractions, hotels, initialDate, onClose }: M
             </button>
             <div className="text-sm font-semibold text-gray-700 dark:text-gray-200 min-w-[11rem] text-center">
               {formatDateFull(date)}
-              <span className="block text-[10px] font-medium text-gray-400 dark:text-gray-500">{getCityForDate(date)}</span>
+              <span className="block text-[10px] font-medium text-gray-400 dark:text-gray-500">{getCityForDate(date).name}</span>
             </div>
             <button
               onClick={() => dateIdx < tripDates.length - 1 && setDate(tripDates[dateIdx + 1])}

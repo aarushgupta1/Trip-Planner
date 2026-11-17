@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-  generateTripDates,
   formatTime,
   formatDate,
   formatDateFull,
@@ -8,14 +7,15 @@ import {
   getHotelDates,
   distanceKm,
   getDirectionsUrl,
-  TRIP_START,
-  TRIP_END,
+  shiftTime,
+  formatDateRange,
 } from '@/lib/utils';
 import type { Hotel } from '@/lib/types';
 
 function makeHotel(overrides: Partial<Hotel> = {}): Hotel {
   return {
     id: 'h1',
+    trip_id: 't1',
     name: 'Test Hotel',
     location: null,
     lat: null,
@@ -33,35 +33,6 @@ function makeHotel(overrides: Partial<Hotel> = {}): Hotel {
     ...overrides,
   };
 }
-
-// ---------------------------------------------------------------------------
-describe('generateTripDates', () => {
-  const dates = generateTripDates();
-
-  it('returns 11 dates (Aug 6 through Aug 16 inclusive)', () => {
-    expect(dates).toHaveLength(11);
-  });
-
-  it('starts on the trip start date', () => {
-    expect(dates[0]).toBe(TRIP_START); // '2026-08-06'
-  });
-
-  it('ends on the trip end date', () => {
-    expect(dates[dates.length - 1]).toBe(TRIP_END); // '2026-08-16'
-  });
-
-  it('each date is exactly one day after the previous', () => {
-    for (let i = 1; i < dates.length; i++) {
-      const prev = new Date(dates[i - 1] + 'T12:00:00Z');
-      const curr = new Date(dates[i] + 'T12:00:00Z');
-      expect(curr.getTime() - prev.getTime()).toBe(86_400_000); // 24 hours
-    }
-  });
-
-  it('all entries are in YYYY-MM-DD format', () => {
-    expect(dates.every((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))).toBe(true);
-  });
-});
 
 // ---------------------------------------------------------------------------
 describe('formatTime', () => {
@@ -192,5 +163,41 @@ describe('getDirectionsUrl', () => {
 
   it('returns null when either end has neither coordinates nor an address', () => {
     expect(getDirectionsUrl({ lat: null, lng: null, location: null }, { lat: 48.21, lng: 16.37, location: null })).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('shiftTime', () => {
+  it('leaves local times untouched', () => {
+    expect(shiftTime('14:30', 'local', -360)).toBe('14:30');
+  });
+
+  it('shifts home times by the given number of minutes', () => {
+    expect(shiftTime('14:30', 'home', -360)).toBe('08:30');
+    expect(shiftTime('14:30', 'home', 90)).toBe('16:00');
+  });
+
+  it('wraps around midnight in both directions', () => {
+    expect(shiftTime('02:00', 'home', -360)).toBe('20:00');
+    expect(shiftTime('23:00', 'home', 180)).toBe('02:00');
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('formatDateRange', () => {
+  it('collapses the month when both ends share it', () => {
+    expect(formatDateRange('2026-08-06', '2026-08-16')).toBe('Aug 6 – 16, 2026');
+  });
+
+  it('shows both months when they differ', () => {
+    expect(formatDateRange('2026-08-28', '2026-09-03')).toBe('Aug 28 – Sep 3, 2026');
+  });
+
+  it('shows both years across a year boundary', () => {
+    expect(formatDateRange('2026-12-28', '2027-01-04')).toBe('Dec 28, 2026 – Jan 4, 2027');
+  });
+
+  it('handles a single-day trip', () => {
+    expect(formatDateRange('2026-08-06', '2026-08-06')).toBe('Aug 6, 2026');
   });
 });

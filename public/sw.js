@@ -1,5 +1,5 @@
 // Bump this string whenever you deploy significant changes so old caches are cleared.
-const CACHE_NAME = 'vienna-trip-v4';
+const CACHE_NAME = 'trip-planner-v5';
 
 // The app shell — precached on install so the calendar is viewable offline
 // even on a fresh device that's never loaded it before (as long as install

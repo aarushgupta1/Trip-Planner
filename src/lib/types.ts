@@ -9,6 +9,7 @@ export type Category = 'museum' | 'food' | 'landmark' | 'palace' | 'cathedral' |
 
 export interface Attraction {
   id: string;
+  trip_id: string;
   name: string;
   description: string | null;
   category: Category;
@@ -27,8 +28,8 @@ export interface Attraction {
   created_at: string;
   // For flights: which zone the departure and arrival times each display in
   // — a flight's two ends are naturally in two different zones (e.g. an ET
-  // departure landing in CEST Vienna), so these are independent rather than
-  // one flag for the whole event. Both default to 'vienna' and are ignored
+  // departure landing in a different zone), so these are independent rather than
+  // one flag for the whole event. Both default to 'local' and are ignored
   // for non-flight categories.
   departure_timezone: CalendarTimezone;
   arrival_timezone: CalendarTimezone;
@@ -41,10 +42,11 @@ export interface DayNote {
   updated_at: string;
 }
 
-export type Currency = 'EUR' | 'USD' | 'CZK'; // CZK for Prague — the Czech Republic doesn't use the euro
+export type Currency = string; // 3-letter code, e.g. 'EUR' — see lib/currency.ts
 
 export interface Hotel {
   id: string;
+  trip_id: string;
   name: string;
   location: string | null; // free-text address, geocoded server-side into lat/lng
   lat: number | null;

@@ -66,14 +66,23 @@ alter table attractions drop column if exists pin_eastern;
 -- For flights: which zone the departure and arrival times each display in
 -- (e.g. an ET departure landing in CEST Vienna). Ignored for non-flight
 -- categories; both default to 'vienna' like every other event.
-alter table attractions add column if not exists departure_timezone text not null default 'vienna';
-alter table attractions add column if not exists arrival_timezone text not null default 'vienna';
+-- Values are 'local' (the trip destination's time) or 'home' (the trip's
+-- home timezone, set per trip). Older databases stored 'vienna'/'eastern'
+-- here — those rows are converted below before the new check is applied.
+alter table attractions add column if not exists departure_timezone text not null default 'local';
+alter table attractions add column if not exists arrival_timezone text not null default 'local';
 alter table attractions drop constraint if exists attractions_departure_timezone_check;
-alter table attractions add constraint attractions_departure_timezone_check
-  check (departure_timezone in ('vienna', 'eastern'));
 alter table attractions drop constraint if exists attractions_arrival_timezone_check;
+update attractions set
+  departure_timezone = case departure_timezone when 'vienna' then 'local' when 'eastern' then 'home' else departure_timezone end,
+  arrival_timezone   = case arrival_timezone   when 'vienna' then 'local' when 'eastern' then 'home' else arrival_timezone   end
+where departure_timezone in ('vienna', 'eastern') or arrival_timezone in ('vienna', 'eastern');
+alter table attractions alter column departure_timezone set default 'local';
+alter table attractions alter column arrival_timezone set default 'local';
+alter table attractions add constraint attractions_departure_timezone_check
+  check (departure_timezone in ('local', 'home'));
 alter table attractions add constraint attractions_arrival_timezone_check
-  check (arrival_timezone in ('vienna', 'eastern'));
+  check (arrival_timezone in ('local', 'home'));
 
 -- Enable Row Level Security
 alter table attractions enable row level security;
@@ -145,11 +154,11 @@ alter table hotels add column if not exists updated_at timestamptz default now()
 -- empty, in which case the app falls back to the check_in–check_out range.
 alter table hotels add column if not exists assigned_dates text[] not null default '{}';
 
--- Widen the currency check to add CZK (Prague hotels are priced in Czech
--- koruna, not euros) — the inline check above only applies on first create,
--- so existing tables need the constraint replaced explicitly.
+-- Any ISO-style 3-letter currency code is allowed (trips can be anywhere) —
+-- the inline check above only applies on first create, so existing tables
+-- need the constraint replaced explicitly.
 alter table hotels drop constraint if exists hotels_currency_check;
-alter table hotels add constraint hotels_currency_check check (currency in ('EUR', 'USD', 'CZK'));
+alter table hotels add constraint hotels_currency_check check (currency ~ '^[A-Z]{3}$');
 
 alter table hotels enable row level security;
 
@@ -246,3 +255,219 @@ create policy "public_delete" on event_reminders_sent for delete using (true);
 -- Drops the table from any database that already ran the earlier version of
 -- this file. Safe to re-run either way.
 drop table if exists chat_usage;
+
+-- =====================================================================
+-- Accounts & multiple trips
+--
+-- Everything above started as a single shared trip with open (no-login)
+-- access. From here on each trip belongs to one signed-in user (Supabase
+-- Auth), and every event / hotel / day note belongs to a trip. Row Level
+-- Security below makes each user's data visible only to them — the old
+-- "public_*" open policies are dropped at the end of this section.
+-- Safe to re-run in full, like the rest of this file.
+-- =====================================================================
+
+create table if not exists trips (
+  id            uuid primary key default gen_random_uuid(),
+  -- null only for the one pre-existing trip migrated below, until its
+  -- owner claims it (see claim_legacy_trip at the bottom)
+  owner_id      uuid references auth.users(id) on delete cascade,
+  name          text not null,
+  start_date    date not null,
+  end_date      date not null check (end_date >= start_date),
+  -- The destination's IANA timezone (the first stop's) — the calendar grid
+  -- shows events in this zone, and "today"/reminders are computed in it.
+  timezone      text not null default 'UTC',
+  -- Where the travelers live — flights can show times in this zone too.
+  home_timezone text not null default 'America/New_York',
+  created_at    timestamptz default now()
+);
+
+-- One row per stop. A city can appear more than once and ranges can overlap
+-- (e.g. a day trip from one base city to another), same as before.
+create table if not exists trip_cities (
+  id           uuid primary key default gen_random_uuid(),
+  trip_id      uuid not null references trips(id) on delete cascade,
+  name         text not null,
+  country      text not null default '',
+  country_code text not null default '',
+  lat          double precision not null,
+  lng          double precision not null,
+  timezone     text not null default 'UTC',
+  start_date   date not null,
+  end_date     date not null check (end_date >= start_date),
+  position     integer not null default 0
+);
+create index if not exists trip_cities_trip_id_idx on trip_cities (trip_id);
+
+alter table attractions add column if not exists trip_id uuid references trips(id) on delete cascade;
+alter table hotels      add column if not exists trip_id uuid references trips(id) on delete cascade;
+alter table day_notes   add column if not exists trip_id uuid references trips(id) on delete cascade;
+create index if not exists attractions_trip_id_idx on attractions (trip_id);
+create index if not exists hotels_trip_id_idx on hotels (trip_id);
+
+-- Move all pre-existing (single-trip) data into one "legacy" trip so
+-- nothing is lost. Only runs if there's actually unassigned data, so a
+-- fresh database doesn't get a phantom Vienna trip.
+do $$
+declare
+  legacy uuid := '00000000-0000-0000-0000-000000000001';
+begin
+  if exists (select 1 from attractions where trip_id is null)
+     or exists (select 1 from hotels where trip_id is null)
+     or exists (select 1 from day_notes where trip_id is null) then
+
+    insert into trips (id, owner_id, name, start_date, end_date, timezone, home_timezone)
+    values (legacy, null, 'Vienna, Salzburg & Prague', '2026-08-06', '2026-08-16', 'Europe/Vienna', 'America/New_York')
+    on conflict (id) do nothing;
+
+    if not exists (select 1 from trip_cities where trip_id = legacy) then
+      insert into trip_cities (trip_id, name, country, country_code, lat, lng, timezone, start_date, end_date, position) values
+        (legacy, 'Vienna',   'Austria',        'AT', 48.2082, 16.3738, 'Europe/Vienna', '2026-08-06', '2026-08-08', 0),
+        (legacy, 'Salzburg', 'Austria',        'AT', 47.8095, 13.0550, 'Europe/Vienna', '2026-08-09', '2026-08-11', 1),
+        (legacy, 'Prague',   'Czech Republic', 'CZ', 50.0755, 14.4378, 'Europe/Prague', '2026-08-12', '2026-08-16', 2),
+        -- Aug 10: day trip back to Vienna while based in Salzburg
+        (legacy, 'Vienna',   'Austria',        'AT', 48.2082, 16.3738, 'Europe/Vienna', '2026-08-10', '2026-08-10', 3),
+        -- Aug 12: Salzburg checkout day, before arriving in Prague
+        (legacy, 'Salzburg', 'Austria',        'AT', 47.8095, 13.0550, 'Europe/Vienna', '2026-08-12', '2026-08-12', 4);
+    end if;
+
+    update attractions set trip_id = legacy where trip_id is null;
+    update hotels      set trip_id = legacy where trip_id is null;
+    update day_notes   set trip_id = legacy where trip_id is null;
+  end if;
+end $$;
+
+alter table attractions alter column trip_id set not null;
+alter table hotels      alter column trip_id set not null;
+alter table day_notes   alter column trip_id set not null;
+
+-- A day note is now unique per (trip, date) rather than per date alone.
+alter table day_notes drop constraint if exists day_notes_pkey;
+alter table day_notes add primary key (trip_id, date);
+
+-- Which device(s) to notify belongs to a user now, not to everyone.
+alter table push_subscriptions add column if not exists user_id uuid references auth.users(id) on delete cascade;
+
+-- ---- Row Level Security: each user only ever sees their own trips ----
+
+create or replace function public.is_trip_owner(p_trip uuid)
+returns boolean
+language sql stable security definer
+set search_path = public
+as $$
+  select exists (select 1 from trips where id = p_trip and owner_id = auth.uid());
+$$;
+
+alter table trips enable row level security;
+alter table trip_cities enable row level security;
+
+drop policy if exists "owner_all" on trips;
+create policy "owner_all" on trips for all to authenticated
+  using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+drop policy if exists "owner_all" on trip_cities;
+create policy "owner_all" on trip_cities for all to authenticated
+  using (public.is_trip_owner(trip_id)) with check (public.is_trip_owner(trip_id));
+
+-- Replace the old open policies on the trip-scoped tables.
+drop policy if exists "public_select" on attractions;
+drop policy if exists "public_insert" on attractions;
+drop policy if exists "public_update" on attractions;
+drop policy if exists "public_delete" on attractions;
+drop policy if exists "owner_all" on attractions;
+create policy "owner_all" on attractions for all to authenticated
+  using (public.is_trip_owner(trip_id)) with check (public.is_trip_owner(trip_id));
+
+drop policy if exists "public_select" on hotels;
+drop policy if exists "public_insert" on hotels;
+drop policy if exists "public_update" on hotels;
+drop policy if exists "public_delete" on hotels;
+drop policy if exists "owner_all" on hotels;
+create policy "owner_all" on hotels for all to authenticated
+  using (public.is_trip_owner(trip_id)) with check (public.is_trip_owner(trip_id));
+
+drop policy if exists "public_select" on day_notes;
+drop policy if exists "public_insert" on day_notes;
+drop policy if exists "public_update" on day_notes;
+drop policy if exists "public_delete" on day_notes;
+drop policy if exists "owner_all" on day_notes;
+create policy "owner_all" on day_notes for all to authenticated
+  using (public.is_trip_owner(trip_id)) with check (public.is_trip_owner(trip_id));
+
+-- Reminder bookkeeping follows the attraction it belongs to. (The reminder
+-- endpoint itself uses the service-role key, which bypasses RLS.)
+drop policy if exists "public_select" on event_reminders_sent;
+drop policy if exists "public_insert" on event_reminders_sent;
+drop policy if exists "public_delete" on event_reminders_sent;
+drop policy if exists "owner_all" on event_reminders_sent;
+create policy "owner_all" on event_reminders_sent for all to authenticated
+  using (exists (select 1 from attractions a where a.id = attraction_id and public.is_trip_owner(a.trip_id)))
+  with check (exists (select 1 from attractions a where a.id = attraction_id and public.is_trip_owner(a.trip_id)));
+
+-- Push subscriptions: a user only sees/removes their own devices.
+drop policy if exists "public_select" on push_subscriptions;
+drop policy if exists "public_insert" on push_subscriptions;
+drop policy if exists "public_update" on push_subscriptions;
+drop policy if exists "public_delete" on push_subscriptions;
+drop policy if exists "owner_all" on push_subscriptions;
+create policy "owner_all" on push_subscriptions for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- Re-registering the same browser under a different account needs to take
+-- over the existing row (endpoint is unique), which RLS alone wouldn't allow
+-- — so saving goes through this function instead.
+create or replace function public.save_push_subscription(p_endpoint text, p_p256dh text, p_auth text)
+returns void
+language sql security definer
+set search_path = public
+as $$
+  insert into push_subscriptions (endpoint, p256dh, auth, user_id)
+  values (p_endpoint, p_p256dh, p_auth, auth.uid())
+  on conflict (endpoint) do update
+    set p256dh = excluded.p256dh, auth = excluded.auth, user_id = excluded.user_id;
+$$;
+revoke all on function public.save_push_subscription(text, text, text) from public, anon;
+grant execute on function public.save_push_subscription(text, text, text) to authenticated;
+
+-- Realtime for the new trip tables isn't needed (they only change from the
+-- trips screens); attractions/hotels/day_notes stay published above.
+
+-- ---- Claiming the pre-existing Vienna trip ----
+--
+-- The migration above parked your original data in a trip with no owner.
+-- After you've signed up in the app, run this ONCE in the SQL Editor with
+-- the email you signed up with:
+--
+--   select public.claim_legacy_trip('you@example.com');
+--
+-- It can only be run from the SQL Editor (not from the app or API), so
+-- nobody else who signs up can take the trip.
+create or replace function public.claim_legacy_trip(p_email text)
+returns text
+language plpgsql security definer
+set search_path = public, auth
+as $$
+declare
+  uid uuid;
+  claimed integer;
+begin
+  select id into uid from auth.users where lower(email) = lower(p_email);
+  if uid is null then
+    return 'No account with that email yet — sign up in the app first, then run this again.';
+  end if;
+
+  update trips set owner_id = uid
+  where id = '00000000-0000-0000-0000-000000000001' and owner_id is null;
+  get diagnostics claimed = row_count;
+
+  -- Devices that enabled reminders before accounts existed.
+  update push_subscriptions set user_id = uid where user_id is null;
+
+  if claimed = 1 then
+    return 'Done — the Vienna, Salzburg & Prague trip is now on your account.';
+  end if;
+  return 'Nothing to claim (already claimed, or there was no earlier data).';
+end;
+$$;
+revoke all on function public.claim_legacy_trip(text) from public, anon, authenticated;

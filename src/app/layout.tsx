@@ -6,8 +6,8 @@ import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration';
 const geist = Geist({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Vienna, Salzburg & Prague Trip Planner',
-  description: 'Family itinerary planner for our Vienna, Salzburg & Prague vacation, Aug 6–16 2026',
+  title: 'Trip Planner',
+  description: 'Plan a trip to anywhere — day-by-day itinerary, hotels, maps and weather.',
   // iOS ignores the manifest's icons/display fields for "Add to Home Screen"
   // — it only respects these tags (via Next's icons/appleWebApp metadata),
   // plus needs a PNG icon since it doesn't rasterize SVG apple-touch-icons.
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'VSP Trip',
+    title: 'Trips',
   },
 };
 

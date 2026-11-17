@@ -1,28 +1,5 @@
 import { Category, Hotel } from './types';
 
-export const TRIP_START = '2026-08-06';
-export const TRIP_END = '2026-08-16';
-
-export function generateTripDates(): string[] {
-  const dates: string[] = [];
-  const start = new Date(TRIP_START + 'T12:00:00Z');
-  const end = new Date(TRIP_END + 'T12:00:00Z');
-  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
-    dates.push(d.toISOString().split('T')[0]);
-  }
-  return dates;
-}
-
-// The trip day right after `date` — used e.g. to label the next scheduled
-// event "Tomorrow" in the header. Falls back to the same date if it's the
-// trip's last day (or isn't a recognized trip date at all).
-export function nextTripDate(date: string): string {
-  const dates = generateTripDates();
-  const idx = dates.indexOf(date);
-  if (idx === -1 || idx === dates.length - 1) return date;
-  return dates[idx + 1];
-}
-
 // Every date from start to end, inclusive — used to expand a hotel's
 // check_in/check_out into individual calendar days (see getHotelDates
 // below), and by the hotel form to auto-fill its day picker from those two
@@ -179,6 +156,20 @@ export function formatDateShort(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
+// "Aug 6 – 16, 2026" / "Dec 28, 2026 – Jan 4, 2027" — for trip cards/headers.
+export function formatDateRange(start: string, end: string): string {
+  const s = new Date(start + 'T12:00:00Z');
+  const e = new Date(end + 'T12:00:00Z');
+  const opts = { timeZone: 'UTC' } as const;
+  const month = (d: Date) => d.toLocaleDateString('en-US', { ...opts, month: 'short' });
+  const day = (d: Date) => d.toLocaleDateString('en-US', { ...opts, day: 'numeric' });
+  const year = (d: Date) => d.toLocaleDateString('en-US', { ...opts, year: 'numeric' });
+  if (start === end) return `${month(s)} ${day(s)}, ${year(s)}`;
+  if (year(s) !== year(e)) return `${month(s)} ${day(s)}, ${year(s)} – ${month(e)} ${day(e)}, ${year(e)}`;
+  if (month(s) !== month(e)) return `${month(s)} ${day(s)} – ${month(e)} ${day(e)}, ${year(e)}`;
+  return `${month(s)} ${day(s)} – ${day(e)}, ${year(e)}`;
+}
+
 // Rough "how long ago" phrasing — used for the offline banner's "last
 // synced" note and for "last edited by ___" attribution. Doesn't need to be
 // precise to the second, just give a sense of scale.
@@ -200,23 +191,24 @@ export function formatTime(timeStr: string): string {
   return `${h12}:${String(minutes).padStart(2, '0')} ${ampm}`;
 }
 
-export type CalendarTimezone = 'vienna' | 'eastern';
+// 'local' = the trip destination's wall-clock time (what every event is
+// stored and edited in); 'home' = the trip's home timezone, which a flight's
+// departure/arrival can be shown in instead (see homeShiftMinutes in
+// tripTime.ts for how far apart the two are).
+export type CalendarTimezone = 'local' | 'home';
 
-// Trip events are stored and edited in Vienna local time; this is how far
-// behind US Eastern runs during the trip (CEST UTC+2 vs EDT UTC-4 in August).
-export const EASTERN_OFFSET_HOURS = -6;
-
-// Shifts a stored "HH:MM" (always Vienna time) into the given display
-// timezone, for showing events on the calendar — never for editing/saving.
-export function shiftTime(timeStr: string, timezone: CalendarTimezone): string {
-  if (timezone !== 'eastern') return timeStr;
+// Shifts a stored "HH:MM" (always destination-local time) into the given
+// display timezone, for showing events on the calendar — never for
+// editing/saving. `homeShiftMinutes` is how far home time is from local time.
+export function shiftTime(timeStr: string, timezone: CalendarTimezone, homeShiftMinutes = 0): string {
+  if (timezone !== 'home') return timeStr;
   const [hours, minutes] = timeStr.split(':').map(Number);
-  const shifted = ((hours + EASTERN_OFFSET_HOURS) % 24 + 24) % 24;
-  return `${String(shifted).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  const total = (((hours * 60 + minutes + homeShiftMinutes) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
-export function formatTimeInZone(timeStr: string, timezone: CalendarTimezone): string {
-  return formatTime(shiftTime(timeStr, timezone));
+export function formatTimeInZone(timeStr: string, timezone: CalendarTimezone, homeShiftMinutes = 0): string {
+  return formatTime(shiftTime(timeStr, timezone, homeShiftMinutes));
 }
 
 // Google's "universal" maps link — works cross-platform (opens the native

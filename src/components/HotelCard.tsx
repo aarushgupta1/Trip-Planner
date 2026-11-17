@@ -2,9 +2,9 @@
 
 import { Hotel } from '@/lib/types';
 import { formatDateShort } from '@/lib/utils';
+import { currencySymbol } from '@/lib/currency';
 import { Calendar, MapPin } from 'lucide-react';
 
-const CURRENCY_SYMBOLS: Record<string, string> = { EUR: '€', USD: '$', CZK: 'Kč' };
 
 function nightsBetween(checkIn: string | null, checkOut: string | null): number | null {
   if (!checkIn || !checkOut) return null;
@@ -20,7 +20,7 @@ interface HotelCardProps {
 
 export default function HotelCard({ hotel, onClick }: HotelCardProps) {
   const nights = nightsBetween(hotel.check_in, hotel.check_out);
-  const symbol = CURRENCY_SYMBOLS[hotel.currency] ?? `${hotel.currency} `;
+  const symbol = currencySymbol(hotel.currency);
 
   return (
     <div

@@ -19,6 +19,7 @@ import type { Attraction } from '@/lib/types';
 function makeAttraction(overrides: Partial<Attraction> = {}): Attraction {
   return {
     id: 'a1',
+    trip_id: 't1',
     name: 'Test',
     description: null,
     category: 'other',
@@ -35,8 +36,8 @@ function makeAttraction(overrides: Partial<Attraction> = {}): Attraction {
     edited_by: null,
     updated_at: '2026-01-01T00:00:00Z',
     created_at: '2026-01-01T00:00:00Z',
-    departure_timezone: 'vienna',
-    arrival_timezone: 'vienna',
+    departure_timezone: 'local',
+    arrival_timezone: 'local',
     ...overrides,
   };
 }

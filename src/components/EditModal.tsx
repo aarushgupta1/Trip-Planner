@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from 'react';
 import { Attraction, Category, Hotel } from '@/lib/types';
-import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, generateTripDates, formatDateFull, getMapsUrl, getDirectionsUrl, distanceKm, getHotelDates, timeAgo } from '@/lib/utils';
-import { getCityForDate } from '@/lib/trip';
+import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, formatDateFull, getMapsUrl, getDirectionsUrl, distanceKm, getHotelDates, timeAgo } from '@/lib/utils';
+import { useTrip } from './TripProvider';
 import { updateAttraction, deleteAttraction, removeTicketUrl } from '@/app/actions';
 import { getEditorName } from '@/lib/editorName';
 import { TICKET_IMAGE_EXTENSION_RE, ticketFilename, uploadTicketFile } from '@/lib/tickets';
@@ -28,11 +28,12 @@ export default function EditModal({ attraction, allAttractions, hotels, onClose,
   // Legacy unscheduled events (from before the "Unscheduled" option was
   // removed) fall back to the trip's first day rather than an empty value,
   // since every event now needs a real scheduled date.
+  const { dates: tripDates, getCityForDate, cityNames, homeZoneLabel } = useTrip();
   const initialForm = {
     name: attraction.name,
     description: attraction.description ?? '',
     category: attraction.category,
-    scheduled_date: attraction.scheduled_date ?? generateTripDates()[0],
+    scheduled_date: attraction.scheduled_date ?? tripDates[0],
     start_time: attraction.start_time ?? '',
     end_time: attraction.end_time ?? '',
     notes: attraction.notes ?? '',
@@ -142,7 +143,6 @@ export default function EditModal({ attraction, allAttractions, hotels, onClose,
       setTicketError(err instanceof Error ? err.message : "Couldn't remove ticket — try again.");
     }
   };
-  const tripDates = generateTripDates();
   const categories = SELECTABLE_CATEGORIES;
 
   const handleSave = () => {
@@ -291,7 +291,7 @@ export default function EditModal({ attraction, allAttractions, hotels, onClose,
             >
               {tripDates.map((d) => (
                 <option key={d} value={d}>
-                  {formatDateFull(d)} — {getCityForDate(d)}
+                  {formatDateFull(d)} — {getCityForDate(d).name}
                 </option>
               ))}
             </select>
@@ -363,22 +363,22 @@ export default function EditModal({ attraction, allAttractions, hotels, onClose,
                 <label className={['flex items-center gap-2', readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'].join(' ')}>
                   <input
                     type="checkbox"
-                    checked={form.departure_timezone === 'eastern'}
-                    onChange={(e) => setForm((f) => ({ ...f, departure_timezone: e.target.checked ? 'eastern' : 'vienna' }))}
+                    checked={form.departure_timezone === 'home'}
+                    onChange={(e) => setForm((f) => ({ ...f, departure_timezone: e.target.checked ? 'home' : 'local' }))}
                     disabled={readOnly}
                     className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                   />
-                  Departure time is in Eastern (ET)
+                  Departure time is in home time ({homeZoneLabel})
                 </label>
                 <label className={['flex items-center gap-2', readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'].join(' ')}>
                   <input
                     type="checkbox"
-                    checked={form.arrival_timezone === 'eastern'}
-                    onChange={(e) => setForm((f) => ({ ...f, arrival_timezone: e.target.checked ? 'eastern' : 'vienna' }))}
+                    checked={form.arrival_timezone === 'home'}
+                    onChange={(e) => setForm((f) => ({ ...f, arrival_timezone: e.target.checked ? 'home' : 'local' }))}
                     disabled={readOnly}
                     className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                   />
-                  Arrival time is in Eastern (ET)
+                  Arrival time is in home time ({homeZoneLabel})
                 </label>
               </div>
             )}
@@ -408,7 +408,7 @@ export default function EditModal({ attraction, allAttractions, hotels, onClose,
               onChange={(v) => setForm((f) => ({ ...f, location: v }))}
               disabled={readOnly}
               className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-300 dark:placeholder-gray-600"
-              placeholder="Address or place name (Vienna, Salzburg, or Prague)"
+              placeholder={`Address or place name (${cityNames})`}
             />
           </div>
 

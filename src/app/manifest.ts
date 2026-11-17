@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Vienna, Salzburg & Prague Trip Planner',
-    short_name: 'VSP Trip',
-    description: 'Family itinerary planner for our Vienna, Salzburg & Prague vacation, Aug 6–16 2026',
+    name: 'Trip Planner',
+    short_name: 'Trips',
+    description: 'Plan a trip to anywhere — day-by-day itinerary, hotels, maps and weather.',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',

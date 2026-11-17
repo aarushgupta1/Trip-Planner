@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from 'react';
 import { Hotel, Currency } from '@/lib/types';
+import { CURRENCY_OPTIONS, currencySymbol, defaultCurrencyForCountry } from '@/lib/currency';
+import { useTrip } from './TripProvider';
 import { createHotel, updateHotel, deleteHotel } from '@/app/actions';
-import { getMapsUrl, timeAgo, generateTripDates, formatDateShort, datesInRange } from '@/lib/utils';
+import { getMapsUrl, timeAgo, formatDateShort, datesInRange } from '@/lib/utils';
 import { getEditorName } from '@/lib/editorName';
 import { useOnlineStatus } from '@/lib/useOnlineStatus';
 import LocationAutocomplete from './LocationAutocomplete';
@@ -17,8 +19,6 @@ interface HotelModalProps {
   onDeleted?: (deleted: Hotel) => void;
 }
 
-const CURRENCY_OPTIONS: Currency[] = ['EUR', 'USD', 'CZK'];
-const CURRENCY_SYMBOLS: Record<Currency, string> = { EUR: '€', USD: '$', CZK: 'Kč' };
 
 function nightsBetween(checkIn: string, checkOut: string): number | null {
   if (!checkIn || !checkOut) return null;
@@ -31,13 +31,14 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
   const isEditing = !!hotel;
   const isOnline = useOnlineStatus();
 
+  const { trip, dates: tripDates, cityNames } = useTrip();
   const initialForm = {
     name: hotel?.name ?? '',
     location: hotel?.location ?? '',
     check_in: hotel?.check_in ?? '',
     check_out: hotel?.check_out ?? '',
     price: hotel?.price != null ? String(hotel.price) : '',
-    currency: hotel?.currency ?? ('EUR' as Currency),
+    currency: hotel?.currency ?? (defaultCurrencyForCountry(trip.cities[0]?.country_code) as Currency),
     confirmation_number: hotel?.confirmation_number ?? '',
     notes: hotel?.notes ?? '',
     assigned_dates:
@@ -136,6 +137,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
         } else {
           const created = await createHotel(
             {
+              trip_id: trip.id,
               name: form.name.trim(),
               location: trimmedLocation,
               check_in: checkIn,
@@ -273,7 +275,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
               onChange={(v) => setForm((f) => ({ ...f, location: v }))}
               disabled={!isOnline}
               className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-300 dark:placeholder-gray-600"
-              placeholder="Hotel address (Vienna, Salzburg, or Prague)"
+              placeholder={`Hotel address (${cityNames})`}
             />
           </div>
 
@@ -323,7 +325,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
               )}
             </div>
             <div className="grid grid-cols-4 gap-1">
-              {generateTripDates().map((d) => {
+              {tripDates.map((d) => {
                 const selected = form.assigned_dates.includes(d);
                 return (
                   <button
@@ -354,26 +356,20 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
               Price
             </label>
             <div className="flex items-center gap-2">
-              <div className="flex rounded-lg border border-violet-200 dark:border-violet-800 overflow-hidden text-xs font-semibold shrink-0">
-                {CURRENCY_OPTIONS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setForm((f) => ({ ...f, currency: c }))}
-                    disabled={!isOnline}
-                    className={
-                      form.currency === c
-                        ? 'px-3 py-2.5 bg-violet-600 text-white'
-                        : 'px-3 py-2.5 bg-white dark:bg-gray-900 text-violet-600 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900 transition-colors'
-                    }
-                  >
-                    {c}
-                  </button>
+              <select
+                value={form.currency}
+                onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
+                disabled={!isOnline}
+                aria-label="Currency"
+                className="shrink-0 px-2.5 py-2.5 rounded-lg border border-violet-200 dark:border-violet-800 bg-white dark:bg-gray-900 text-violet-700 dark:text-violet-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60"
+              >
+                {(CURRENCY_OPTIONS.includes(form.currency) ? CURRENCY_OPTIONS : [form.currency, ...CURRENCY_OPTIONS]).map((c) => (
+                  <option key={c} value={c}>{c}</option>
                 ))}
-              </div>
+              </select>
               <div className="relative flex-1">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-violet-400 dark:text-violet-500 font-bold pointer-events-none">
-                  {CURRENCY_SYMBOLS[form.currency]}
+                  {currencySymbol(form.currency).trim()}
                 </span>
                 <input
                   type="number"
@@ -390,7 +386,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
             </div>
             {nights && form.price.trim() && !isNaN(Number(form.price)) && (
               <p className="mt-2 text-xs text-violet-500 dark:text-violet-400">
-                ≈ {CURRENCY_SYMBOLS[form.currency]}{(Number(form.price) / nights).toFixed(2)} / night · {nights} night{nights === 1 ? '' : 's'}
+                ≈ {currencySymbol(form.currency).trim()}{(Number(form.price) / nights).toFixed(2)} / night · {nights} night{nights === 1 ? '' : 's'}
               </p>
             )}
           </div>

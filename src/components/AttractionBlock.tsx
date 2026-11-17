@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Attraction } from '@/lib/types';
 import { CATEGORY_COLORS, CATEGORY_ICONS, formatTimeInZone, CalendarTimezone } from '@/lib/utils';
 import { Clock } from 'lucide-react';
+import { useTrip } from './TripProvider';
 
 function linkify(text: string) {
   const parts = text.split(/(https?:\/\/[^\s]+)/g);
@@ -36,7 +37,7 @@ interface AttractionBlockProps {
   // Independent zones for the start and end time labels — a flight's
   // departure and arrival are naturally in two different zones, so these
   // aren't tied together the way a single "timezone" prop would imply.
-  // Every other category just passes 'vienna' for both.
+  // Every other category just passes 'local' for both.
   startTimezone?: CalendarTimezone;
   endTimezone?: CalendarTimezone;
 }
@@ -48,14 +49,15 @@ export default function AttractionBlock({
   isCompact = false,
   isOverlay = false,
   readOnly = false,
-  startTimezone = 'vienna',
-  endTimezone = 'vienna',
+  startTimezone = 'local',
+  endTimezone = 'local',
 }: AttractionBlockProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: attraction.id,
     disabled: readOnly,
   });
 
+  const { homeShiftMinutes } = useTrip();
   const colors = CATEGORY_COLORS[attraction.category];
 
   const style = isOverlay
@@ -95,8 +97,8 @@ export default function AttractionBlock({
           <div className={['flex items-center gap-0.5 mt-0.5 opacity-60', colors.text].join(' ')}>
             <Clock size={9} />
             <span className="text-[10px]">
-              {formatTimeInZone(attraction.start_time, startTimezone)}
-              {attraction.end_time && ` – ${formatTimeInZone(attraction.end_time, endTimezone)}`}
+              {formatTimeInZone(attraction.start_time, startTimezone, homeShiftMinutes)}
+              {attraction.end_time && ` – ${formatTimeInZone(attraction.end_time, endTimezone, homeShiftMinutes)}`}
             </span>
           </div>
         )}

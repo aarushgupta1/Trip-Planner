@@ -5,20 +5,18 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { getEditorName } from '@/lib/editorName';
 import { Users } from 'lucide-react';
 
-const CHANNEL_NAME = 'presence-viewers';
-
 interface PresenceEntry {
   name: string;
 }
 
-// Shows who else currently has the app open, using Supabase Realtime's
+// Shows which of your devices currently have this trip open, using Supabase Realtime's
 // Presence feature — each browser tab/device tracks itself on a shared
 // channel with whatever editor name is set (see editorName.ts), and every
 // client sees everyone else's presence update live, no polling needed.
 // Multiple tabs/devices from the same person show up as separate
 // connections under the hood, but are deduped by name here since "who's
 // here" means people, not tabs.
-export default function PresenceIndicator() {
+export default function PresenceIndicator({ tripId }: { tripId: string }) {
   const [names, setNames] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -27,7 +25,7 @@ export default function PresenceIndicator() {
     const client = getSupabaseClient();
     if (!client) return;
 
-    const channel = client.channel(CHANNEL_NAME, {
+    const channel = client.channel(`presence-${tripId}`, {
       config: { presence: { key: crypto.randomUUID() } },
     });
 
@@ -54,7 +52,7 @@ export default function PresenceIndicator() {
       window.removeEventListener('editor-name-changed', announce);
       client.removeChannel(channel);
     };
-  }, []);
+  }, [tripId]);
 
   useEffect(() => {
     if (!open) return;

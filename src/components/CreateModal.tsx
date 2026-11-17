@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from 'react';
 import { Attraction, Category, Hotel } from '@/lib/types';
-import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, generateTripDates, formatDateFull, getMapsUrl, getDirectionsUrl, getHotelDates, CalendarTimezone } from '@/lib/utils';
-import { getCityForDate } from '@/lib/trip';
-import { getViennaNow } from '@/lib/viennaTime';
+import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, formatDateFull, getMapsUrl, getDirectionsUrl, getHotelDates, CalendarTimezone } from '@/lib/utils';
+import { getNowInZone } from '@/lib/tripTime';
+import { useTrip } from './TripProvider';
 import { createAttractionObject } from '@/app/actions';
 import { getEditorName } from '@/lib/editorName';
 import { TICKET_IMAGE_EXTENSION_RE, uploadTicketFile } from '@/lib/tickets';
@@ -30,8 +30,9 @@ interface CreateModalProps {
 }
 
 export default function CreateModal({ date, startTime, allAttractions, hotels, onClose, onCreated }: CreateModalProps) {
-  const tripDates = generateTripDates();
-  const defaultDate = date ?? (tripDates.includes(getViennaNow().date) ? getViennaNow().date : tripDates[0]);
+  const { trip, dates: tripDates, getCityForDate, cityNames, homeZoneLabel } = useTrip();
+  const today = getNowInZone(trip.timezone).date;
+  const defaultDate = date ?? (tripDates.includes(today) ? today : tripDates[0]);
   const defaultStartTime = startTime ?? '';
   const defaultEndTime = defaultStartTime
     ? minutesToTime(timeToMinutes(defaultStartTime) + DEFAULT_DURATION_MINUTES)
@@ -47,8 +48,8 @@ export default function CreateModal({ date, startTime, allAttractions, hotels, o
     location: '',
     opening_hours: '',
     open_days: '',
-    departure_timezone: 'vienna' as CalendarTimezone,
-    arrival_timezone: 'vienna' as CalendarTimezone,
+    departure_timezone: 'local' as CalendarTimezone,
+    arrival_timezone: 'local' as CalendarTimezone,
   };
   const [form, setForm] = useState(initialForm);
   const [pendingTickets, setPendingTickets] = useState<File[]>([]);
@@ -102,6 +103,7 @@ export default function CreateModal({ date, startTime, allAttractions, hotels, o
       try {
         attraction = await createAttractionObject(
           {
+            trip_id: trip.id,
             name: form.name.trim(),
             description: form.description || null,
             category: form.category,
@@ -195,7 +197,7 @@ export default function CreateModal({ date, startTime, allAttractions, hotels, o
             >
               {tripDates.map((d) => (
                 <option key={d} value={d}>
-                  {formatDateFull(d)} — {getCityForDate(d)}
+                  {formatDateFull(d)} — {getCityForDate(d).name}
                 </option>
               ))}
             </select>
@@ -263,20 +265,20 @@ export default function CreateModal({ date, startTime, allAttractions, hotels, o
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={form.departure_timezone === 'eastern'}
-                    onChange={(e) => setForm((f) => ({ ...f, departure_timezone: e.target.checked ? 'eastern' : 'vienna' }))}
+                    checked={form.departure_timezone === 'home'}
+                    onChange={(e) => setForm((f) => ({ ...f, departure_timezone: e.target.checked ? 'home' : 'local' }))}
                     className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                   />
-                  Departure time is in Eastern (ET)
+                  Departure time is in home time ({homeZoneLabel})
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={form.arrival_timezone === 'eastern'}
-                    onChange={(e) => setForm((f) => ({ ...f, arrival_timezone: e.target.checked ? 'eastern' : 'vienna' }))}
+                    checked={form.arrival_timezone === 'home'}
+                    onChange={(e) => setForm((f) => ({ ...f, arrival_timezone: e.target.checked ? 'home' : 'local' }))}
                     className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                   />
-                  Arrival time is in Eastern (ET)
+                  Arrival time is in home time ({homeZoneLabel})
                 </label>
               </div>
             )}
@@ -305,7 +307,7 @@ export default function CreateModal({ date, startTime, allAttractions, hotels, o
               value={form.location}
               onChange={(v) => setForm((f) => ({ ...f, location: v }))}
               className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-300 dark:placeholder-gray-600"
-              placeholder="Address or place name (Vienna, Salzburg, or Prague)"
+              placeholder={`Address or place name (${cityNames})`}
             />
           </div>
 

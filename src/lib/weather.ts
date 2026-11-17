@@ -1,7 +1,7 @@
-import { CITY_INFO, TripCity, CITY_ORDER, getCitiesForDate } from './trip';
+import { Trip, TripCity, cityKey, generateTripDates, getCitiesForDate, getCityOrder } from './trip';
 
 export interface DayWeather {
-  city: TripCity;
+  city: string; // cityKey() of the city this reading is for
   high: number; // °F
   low: number; // °F
   code: number; // WMO weather code
@@ -14,35 +14,36 @@ interface DailyBlock {
   weathercode: number[];
 }
 
-// A date normally belongs to a single city, but a day-trip day (see
-// CITY_SEGMENTS in trip.ts) can belong to more than one — so weather is
-// fetched per (date, city) pair, and a date can map to more than one
-// DayWeather entry.
+// A date normally belongs to a single city, but a day-trip day can belong
+// to more than one — so weather is fetched per (date, city) pair, and a
+// date can map to more than one DayWeather entry.
 //
 // Only real forecasts are ever returned — Open-Meteo's forecast endpoint
-// only covers `forecast_days=16`, so a date further out than that (e.g. a
-// trip planned months ahead) simply has no entry yet rather than showing a
-// guessed "typical weather" average in its place. The day header just shows
-// nothing for that date until it's within the forecast window and the
-// real numbers come back.
-export async function getWeatherForDates(dates: string[]): Promise<Record<string, DayWeather[]>> {
+// only covers `forecast_days=16`, so a date further out than that simply
+// has no entry yet rather than showing a guessed "typical weather" average.
+// The day header just shows nothing for that date until it's within the
+// forecast window and the real numbers come back.
+export async function getWeatherForDates(trip: Pick<Trip, 'start_date' | 'end_date' | 'cities'>): Promise<Record<string, DayWeather[]>> {
   const result: Record<string, DayWeather[]> = {};
-  if (dates.length === 0) return result;
+  const dates = generateTripDates(trip);
+  if (dates.length === 0 || trip.cities.length === 0) return result;
 
-  const pairs = dates.flatMap((d) => getCitiesForDate(d).map((city) => ({ date: d, city })));
-
-  const byCity = new Map<TripCity, string[]>();
-  for (const { date, city } of pairs) {
-    byCity.set(city, [...(byCity.get(city) ?? []), date]);
+  const byCity = new Map<string, { city: TripCity; dates: string[] }>();
+  for (const date of dates) {
+    for (const city of getCitiesForDate(trip.cities, date)) {
+      const key = cityKey(city);
+      const entry = byCity.get(key) ?? { city, dates: [] };
+      entry.dates.push(date);
+      byCity.set(key, entry);
+    }
   }
 
   await Promise.all(
-    [...byCity.entries()].map(async ([city, cityDates]) => {
-      const { lat, lng, timezone } = CITY_INFO[city];
+    [...byCity.entries()].map(async ([key, { city, dates: cityDates }]) => {
       try {
         const res = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
-            `&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=${encodeURIComponent(timezone)}&forecast_days=16&temperature_unit=fahrenheit`,
+          `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lng}` +
+            `&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=${encodeURIComponent(city.timezone)}&forecast_days=16&temperature_unit=fahrenheit`,
           { next: { revalidate: 1800 } }
         );
         if (res.ok) {
@@ -51,7 +52,7 @@ export async function getWeatherForDates(dates: string[]): Promise<Record<string
           daily?.time.forEach((day, i) => {
             if (cityDates.includes(day)) {
               (result[day] ??= []).push({
-                city,
+                city: key,
                 high: Math.round(daily.temperature_2m_max[i]),
                 low: Math.round(daily.temperature_2m_min[i]),
                 code: daily.weathercode[i],
@@ -66,10 +67,11 @@ export async function getWeatherForDates(dates: string[]): Promise<Record<string
     })
   );
 
-  // Deterministic order (Vienna before Salzburg before Prague) regardless of
-  // which city's fetch happened to resolve first above.
+  // Deterministic order (same as the day-header badges) regardless of which
+  // city's fetch happened to resolve first above.
+  const order = getCityOrder(trip.cities).map(cityKey);
   for (const date of Object.keys(result)) {
-    result[date].sort((a, b) => CITY_ORDER.indexOf(a.city) - CITY_ORDER.indexOf(b.city));
+    result[date].sort((a, b) => order.indexOf(a.city) - order.indexOf(b.city));
   }
 
   return result;

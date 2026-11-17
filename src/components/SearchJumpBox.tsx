@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Attraction } from '@/lib/types';
-import { CATEGORY_ICONS, formatDate, formatDateFull, formatTime, generateTripDates } from '@/lib/utils';
-import { getCityForDate, getCitiesForDate, CITY_COLORS } from '@/lib/trip';
+import { CATEGORY_ICONS, formatDate, formatDateFull, formatTime } from '@/lib/utils';
+import { cityKey } from '@/lib/trip';
+import { useTrip } from './TripProvider';
 import { Search, X, CalendarDays } from 'lucide-react';
 
 interface SearchJumpBoxProps {
@@ -21,7 +22,7 @@ interface SearchJumpBoxProps {
 export default function SearchJumpBox({ attractions, onClose, onJumpToDate, onSelectAttraction }: SearchJumpBoxProps) {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const tripDates = useMemo(() => generateTripDates(), []);
+  const { dates: tripDates, getCityForDate, getCitiesForDate, cityColor } = useTrip();
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -109,7 +110,7 @@ export default function SearchJumpBox({ attractions, onClose, onJumpToDate, onSe
                         <div className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{a.name}</div>
                         <div className="text-xs text-gray-400 dark:text-gray-500 truncate">
                           {a.scheduled_date ? formatDateFull(a.scheduled_date) : 'No date'}
-                          {city ? ` — ${city}` : ''}
+                          {city ? ` — ${city.name}` : ''}
                           {a.start_time ? ` · ${formatTime(a.start_time)}` : ''}
                         </div>
                       </div>
@@ -131,8 +132,8 @@ export default function SearchJumpBox({ attractions, onClose, onJumpToDate, onSe
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
                 {tripDates.map((date) => {
                   const { weekday, monthDay } = formatDate(date);
-                  // Most days belong to one city, but a day-trip day (like Aug
-                  // 10, Salzburg base with a day trip back to Vienna) belongs
+                  // Most days belong to one city, but a day-trip day (a day
+                  // trip from a base city) belongs
                   // to more than one — show one dot per city rather than just
                   // whichever is "primary".
                   const cities = getCitiesForDate(date);
@@ -146,7 +147,7 @@ export default function SearchJumpBox({ attractions, onClose, onJumpToDate, onSe
                       <span className="text-xs font-bold text-gray-700 dark:text-gray-200">{monthDay}</span>
                       <span className="flex items-center gap-0.5">
                         {cities.map((city) => (
-                          <span key={city} className={['w-1 h-1 rounded-full', CITY_COLORS[city].dot].join(' ')} />
+                          <span key={cityKey(city)} className={['w-1 h-1 rounded-full', cityColor(city).dot].join(' ')} />
                         ))}
                       </span>
                     </button>
