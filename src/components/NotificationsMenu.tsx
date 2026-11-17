@@ -5,28 +5,31 @@ import { NotificationPermissionState } from '@/lib/pushNotifications';
 import { Bell, BellRing, BellOff } from 'lucide-react';
 
 const SEEN_KEY = 'vienna-more-menu-seen';
+const TOAST_MS = 3500;
 
 interface NotificationsMenuProps {
   notifyPermission: NotificationPermissionState;
   notifySubscribed: boolean;
-  onEnableNotifications: () => void;
-  onDisableNotifications: () => void;
+  onEnableNotifications: () => Promise<boolean>;
+  onDisableNotifications: () => Promise<void>;
 }
 
-// The event-alerts bell in the toolbar. The icon shows the current state at a
-// glance (outline = not set up, ringing = on, slashed = off or blocked), and
-// clicking it opens a small panel with the one action that applies.
+// The event-alerts bell in the toolbar. One click turns alerts on and a small
+// note appears for a few seconds saying when you'll be notified; clicking
+// again turns them off. The icon shows the current state at a glance
+// (outline = not set up, ringing = on, slashed = off or blocked).
 export default function NotificationsMenu({
   notifyPermission,
   notifySubscribed,
   onEnableNotifications,
   onDisableNotifications,
 }: NotificationsMenuProps) {
-  const [open, setOpen] = useState(false);
-  // Whether this device has ever opened the panel — once it has, the "check
+  const [message, setMessage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  // Whether this device has ever clicked the bell — once it has, the "check
   // this out" dot shouldn't keep coming back.
   const [seen, setSeen] = useState(true); // default true until checked, avoids a flash of the dot
-  const ref = useRef<HTMLDivElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     try {
@@ -34,37 +37,63 @@ export default function NotificationsMenu({
     } catch {
       // If storage is unavailable, just leave it as seen — not worth nagging.
     }
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [open]);
+  const flash = (text: string) => {
+    setMessage(text);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setMessage(null), TOAST_MS);
+  };
 
-  const markSeen = () => {
+  const handleClick = async () => {
+    if (busy) return;
     setSeen(true);
     try {
       localStorage.setItem(SEEN_KEY, '1');
     } catch {
       // Best-effort — worst case the dot just comes back next visit.
     }
+
+    if (notifyPermission === 'unsupported') {
+      flash("This browser doesn't support event alerts.");
+      return;
+    }
+    if (notifyPermission === 'denied') {
+      flash('Alerts are blocked for this site. Allow notifications in your browser settings to turn them on.');
+      return;
+    }
+
+    setBusy(true);
+    try {
+      if (on) {
+        await onDisableNotifications();
+        flash('Alerts off.');
+      } else {
+        const ok = await onEnableNotifications();
+        flash(ok ? "Alerts on. You'll be notified 30 minutes before each event." : "Couldn't turn on alerts. Check your browser's notification settings.");
+      }
+    } finally {
+      setBusy(false);
+    }
   };
 
   const on = notifyPermission === 'granted' && notifySubscribed;
   const hasBadge = !seen && notifyPermission === 'default';
   const Icon = on ? BellRing : notifyPermission === 'denied' || (notifyPermission === 'granted' && !notifySubscribed) ? BellOff : Bell;
-  const label = on ? 'Event alerts are on' : notifyPermission === 'denied' ? 'Event alerts are blocked' : 'Event alerts';
-
-  const row = 'w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors';
+  const label = on
+    ? 'Event alerts are on (30 minutes before each event). Click to turn off.'
+    : notifyPermission === 'denied'
+      ? 'Event alerts are blocked in your browser settings'
+      : 'Turn on event alerts';
 
   return (
-    <div ref={ref} className="relative shrink-0">
+    <div className="relative shrink-0">
       <button
-        onClick={() => { setOpen((o) => !o); markSeen(); }}
+        onClick={handleClick}
+        disabled={busy}
         className={[
           'relative flex items-center px-2.5 py-1 rounded-lg border transition-colors',
           on
@@ -78,46 +107,12 @@ export default function NotificationsMenu({
         {hasBadge && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />}
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full mt-1.5 z-30 w-60 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1.5">
-          {/* The panel stays open after an action so the "on"/"off" change is
-              visible right away. */}
-          {notifyPermission === 'default' && (
-            <button onClick={onEnableNotifications} className={row}>
-              <Bell size={14} className="text-gray-400 dark:text-gray-500" />
-              Get event alerts
-            </button>
-          )}
-          {notifyPermission === 'granted' && notifySubscribed && (
-            <button
-              onClick={onDisableNotifications}
-              title="You'll get a notification 30 minutes before each event starts, on this device — even if this app isn't open. Click to turn off."
-              className={row}
-            >
-              <BellRing size={14} className="text-blue-500 dark:text-blue-400" />
-              Alerts on
-              <span className="ml-auto text-[10px] text-gray-400 dark:text-gray-500">Turn off</span>
-            </button>
-          )}
-          {notifyPermission === 'granted' && !notifySubscribed && (
-            <button onClick={onEnableNotifications} className={row}>
-              <BellOff size={14} className="text-gray-400 dark:text-gray-500" />
-              Alerts off
-              <span className="ml-auto text-[10px] text-gray-400 dark:text-gray-500">Turn on</span>
-            </button>
-          )}
-          {notifyPermission === 'denied' && (
-            <div
-              className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-400 dark:text-gray-500"
-              title="Notifications are blocked for this site — enable them in your browser's site settings to get 30-minute event alerts"
-            >
-              <BellOff size={14} />
-              Alerts blocked
-            </div>
-          )}
-          <p className="px-3 pb-1.5 pt-0.5 text-[11px] leading-snug text-gray-400 dark:text-gray-500">
-            A notification 30 minutes before each event starts, on this device.
-          </p>
+      {message && (
+        <div
+          role="status"
+          className="absolute right-0 top-full mt-1.5 z-30 w-56 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs leading-snug text-gray-700 shadow-lg dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+        >
+          {message}
         </div>
       )}
     </div>

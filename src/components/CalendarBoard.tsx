@@ -64,9 +64,11 @@ function pageForDate(dates: string[], date: string, daysPerPage: number): number
 
 
 function DayHeader({
-  date, note, onNoteChange, onNoteCommit, weather, hotels, onHotelClick, onOpenMap, onOpenHourly, readOnly, isToday,
+  date, note, onNoteChange, onNoteCommit, weather, hotels, onHotelClick, onOpenMap, onOpenHourly, readOnly, isToday, prevDate,
 }: {
   date: string;
+  // The day before this one on screen (undefined for the first visible day).
+  prevDate?: string;
   note: string;
   onNoteChange: (v: string) => void;
   onNoteCommit: (v: string) => void;
@@ -85,6 +87,10 @@ function DayHeader({
   // single one.
   const { trip, getCitiesForDate, cityColor } = useTrip();
   const cities = getCitiesForDate(date);
+  // A city's name is only spelled out where its stay begins (or on the first
+  // day shown); later days of the same stay just carry its colour dot, so the
+  // same place isn't repeated under every date.
+  const previousKeys = prevDate ? getCitiesForDate(prevDate).map((c) => cityKey(c)) : [];
   const wordOfDay = getWordOfDay(trip, date);
   // More than one hotel can be assigned to the same day (comparing options,
   // a mid-stay switch) — same "render one per match" approach as cities.
@@ -114,13 +120,21 @@ function DayHeader({
             const cityWeather = weather?.find((w) => w.city === cityKey(city));
             return (
               <div key={cityKey(city)} className="flex flex-col items-center gap-0.5">
-                <div
-                  className={['inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide', colors.bg, colors.text].join(' ')}
-                  title={city.name}
-                >
-                  <span className={['w-1 h-1 rounded-full', colors.dot].join(' ')} />
-                  {city.name}
-                </div>
+                {previousKeys.includes(cityKey(city)) ? (
+                  <span
+                    className={['my-1 inline-block h-2 w-2 rounded-full', colors.dot].join(' ')}
+                    title={city.name}
+                    aria-label={city.name}
+                  />
+                ) : (
+                  <div
+                    className={['inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide', colors.bg, colors.text].join(' ')}
+                    title={city.name}
+                  >
+                    <span className={['w-1 h-1 rounded-full', colors.dot].join(' ')} />
+                    {city.name}
+                  </div>
+                )}
                 {cityWeather && (() => {
                   const { icon, label } = weatherCodeInfo(cityWeather.code);
                   return (
@@ -861,8 +875,8 @@ export default function CalendarBoard({
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-blue-600/40 text-blue-600 hover:bg-blue-600/10 text-xs font-semibold transition-colors"
                   title="Aero: ask questions and check your itinerary"
                 >
-                  <Plane size={13} className="-rotate-45" />
-                  <span className="hidden sm:inline">Aero</span>
+                  Aero
+                  <Plane size={13} className="rotate-45" />
                 </button>
                 {/* Jump to today — only relevant while the trip is actually underway */}
                 {now && TRIP_DATES.includes(now.date) && (
@@ -882,10 +896,11 @@ export default function CalendarBoard({
             <div className="flex border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
               <div className="w-16 shrink-0 border-r border-gray-100 dark:border-gray-800" />
 
-              {visibleDates.map((date) => (
+              {visibleDates.map((date, i) => (
                 <DayHeader
                   key={date}
                   date={date}
+                  prevDate={i > 0 ? visibleDates[i - 1] : undefined}
                   note={dayNotes[date] ?? ''}
                   weather={weather[date]}
                   hotels={hotels}

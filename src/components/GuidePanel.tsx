@@ -87,10 +87,8 @@ export default function GuidePanel({
     >
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
         <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white">
-            <Plane size={14} className="-rotate-45" />
-          </span>
           <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Aero</h2>
+          <Plane size={15} className="rotate-45 text-blue-600 dark:text-blue-400" aria-hidden />
         </div>
         <button onClick={onClose} aria-label="Close Aero" className="rounded-lg p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
           <X size={18} />
@@ -270,8 +268,8 @@ export default function GuidePanel({
                   onClick={() => send(fixPrompt)}
                   className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                 >
-                  <Plane size={14} className="-rotate-45" />
                   Ask Aero how to fix these
+                  <Plane size={14} className="rotate-45" />
                 </button>
               )}
             </>

@@ -43,17 +43,18 @@ export function usePushNotifications() {
       .catch(() => {});
   }, []);
 
-  const enable = async () => {
+  // Resolves true once this device is actually subscribed.
+  const enable = async (): Promise<boolean> => {
     if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) {
-      return;
+      return false;
     }
 
     const result = await Notification.requestPermission();
     setPermission(result);
-    if (result !== 'granted') return;
+    if (result !== 'granted') return false;
 
     const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    if (!publicKey) return; // Reminders aren't configured server-side yet.
+    if (!publicKey) return false; // Reminders aren't configured server-side yet.
 
     try {
       const registration = await navigator.serviceWorker.ready;
@@ -73,11 +74,14 @@ export function usePushNotifications() {
           auth: json.keys.auth,
         });
         setSubscribed(true);
+        return true;
       }
+      return false;
     } catch {
       // Subscribing can fail (browser quirks, no VAPID key configured, user
       // dismissed a native prompt) — permission state above already reflects
       // granted/denied, which is the only feedback surfaced for this today.
+      return false;
     }
   };
 
