@@ -2,8 +2,7 @@ import Link from 'next/link';
 import { Plus, MapPin, AlertTriangle, Plane } from 'lucide-react';
 import { getTrips } from '@/app/trips/actions';
 import { getCurrentUser, isSupabaseConfigured } from '@/lib/supabase/server';
-import { formatCityList } from '@/lib/trip';
-import { formatDateRange } from '@/lib/utils';
+import { generateTripDates, getCityOrder } from '@/lib/trip';
 import TripCard from '@/components/TripCard';
 import UserMenu from '@/components/UserMenu';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -34,15 +33,17 @@ export default async function DashboardPage() {
       key={t.id}
       id={t.id}
       name={t.name}
-      cities={formatCityList(t.cities)}
-      dateRange={formatDateRange(t.start_date, t.end_date)}
+      stops={getCityOrder(t.cities).map((c) => ({ name: c.name, country: c.country }))}
+      start={t.start_date}
+      end={t.end_date}
+      days={generateTripDates(t).length}
       status={tripStatus(t.start_date, t.end_date, today)}
       isOwner={t.is_owner}
     />
   );
 
   return (
-    <main className="min-h-dvh bg-gray-50 dark:bg-gray-950">
+    <main className="min-h-dvh bg-[#f4efe6] dark:bg-[#171512]">
       <header className="h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 sm:px-6 shadow-sm">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
@@ -69,7 +70,7 @@ export default async function DashboardPage() {
 
         <div className="flex items-end justify-between gap-3 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <h1 className="ticket-serif text-3xl font-medium text-gray-900 dark:text-gray-100">
               {displayName ? `Hi ${displayName.split(' ')[0]}` : 'My trips'}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
@@ -104,11 +105,11 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {current.length > 0 && <div className="grid gap-3 sm:grid-cols-2">{current.map(renderCard)}</div>}
+            {current.length > 0 && <div className="grid gap-6">{current.map(renderCard)}</div>}
             {past.length > 0 && (
               <section>
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-3">Past trips</h2>
-                <div className="grid gap-3 sm:grid-cols-2">{past.map(renderCard)}</div>
+                <div className="grid gap-6">{past.map(renderCard)}</div>
               </section>
             )}
           </div>

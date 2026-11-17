@@ -43,3 +43,91 @@ body {
     font-size: 16px !important;
   }
 }
+
+/* ---- Trip tickets (dashboard) ---------------------------------------- */
+
+.ticket {
+  --paper: #fbf7f0;
+  --ink: #2b2520;
+  --muted: #8a7f72;
+  --rule: #d9cfbf;
+  --notch: 9px;
+  --stub-h: 92px; /* stacked layout: stub height */
+  --stub-w: 152px; /* side-by-side layout: stub width */
+  position: relative;
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.28s;
+  /* The shadow follows the notched outline because it's applied outside the mask. */
+  filter: drop-shadow(0 1px 1px rgb(70 45 20 / 0.12)) drop-shadow(0 10px 14px rgb(70 45 20 / 0.12));
+}
+.dark .ticket {
+  --paper: #2a2521;
+  --ink: #f1eae0;
+  --muted: #9c9084;
+  --rule: #4a423a;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.4)) drop-shadow(0 10px 14px rgb(0 0 0 / 0.3));
+}
+.ticket:hover {
+  transform: translateY(-3px) rotate(-0.4deg);
+  filter: drop-shadow(0 1px 1px rgb(70 45 20 / 0.14)) drop-shadow(0 16px 18px rgb(70 45 20 / 0.16));
+}
+.ticket:nth-child(even):hover {
+  transform: translateY(-3px) rotate(0.4deg);
+}
+.ticket:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 16px;
+}
+
+.ticket-paper {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr var(--stub-h);
+  border-radius: 14px;
+  color: var(--ink);
+  background-color: var(--paper);
+  /* a whisper of paper grain */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .3 0 0 0 0 .2 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+  /* punched notches where the stub tears off */
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at 0 calc(100% - var(--stub-h)), #0000 97%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch) at 100% calc(100% - var(--stub-h)), #0000 97%, #000) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at 0 calc(100% - var(--stub-h)), #0000 97%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch) at 100% calc(100% - var(--stub-h)), #0000 97%, #000) right / 51% 100% no-repeat;
+}
+
+.ticket-stub {
+  position: relative;
+  border-top: 2px dashed var(--rule);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+}
+
+@media (min-width: 640px) {
+  .ticket-paper {
+    grid-template-rows: none;
+    grid-template-columns: 1fr var(--stub-w);
+    -webkit-mask:
+      radial-gradient(circle var(--notch) at calc(100% - var(--stub-w)) 0, #0000 97%, #000) top / 100% 51% no-repeat,
+      radial-gradient(circle var(--notch) at calc(100% - var(--stub-w)) 100%, #0000 97%, #000) bottom / 100% 51% no-repeat;
+    mask:
+      radial-gradient(circle var(--notch) at calc(100% - var(--stub-w)) 0, #0000 97%, #000) top / 100% 51% no-repeat,
+      radial-gradient(circle var(--notch) at calc(100% - var(--stub-w)) 100%, #0000 97%, #000) bottom / 100% 51% no-repeat;
+  }
+  .ticket-stub {
+    border-top: 0;
+    border-left: 2px dashed var(--rule);
+  }
+}
+
+.ticket-serif {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticket,
+  .ticket:hover {
+    transition: none;
+    transform: none;
+  }
+}
