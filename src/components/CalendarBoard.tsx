@@ -48,9 +48,10 @@ import CreateModal from './CreateModal';
 import GuidePanel from './GuidePanel';
 import type { GuideSuggestion } from '@/lib/guide';
 import NotificationsMenu from './NotificationsMenu';
+import FlightPathIcon from './FlightPathIcon';
 import ThemeToggle from './ThemeToggle';
 import TimeLabels from './TimeLabels';
-import { ChevronLeft, ChevronRight, Pencil, PanelLeftOpen, WifiOff, CalendarDays, ArrowRight, Plane, Clock, Map as MapIcon } from 'lucide-react';
+import { Pencil, PanelLeftOpen, WifiOff, CalendarDays, ArrowRight, Plane, Clock, Map as MapIcon } from 'lucide-react';
 
 // Leaflet touches `window`/`document` at import time, so it can only ever
 // load on the client — ssr: false keeps it (and its CSS) out of the server
@@ -926,7 +927,7 @@ export default function CalendarBoard({
                   className="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 disabled:opacity-25 text-gray-600 dark:text-gray-300 transition-colors"
                   title="Previous"
                 >
-                  <ChevronLeft size={24} />
+                  <FlightPathIcon direction="prev" size={24} />
                 </button>
                 <span className="text-sm font-semibold text-gray-600 dark:text-gray-300 tabular-nums min-w-[3.5rem] text-center">
                   {currentPage + 1} / {totalPages}
@@ -937,7 +938,7 @@ export default function CalendarBoard({
                   className="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 disabled:opacity-25 text-gray-600 dark:text-gray-300 transition-colors"
                   title="Next"
                 >
-                  <ChevronRight size={24} />
+                  <FlightPathIcon direction="next" size={24} />
                 </button>
               </div>
 
