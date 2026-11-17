@@ -19,9 +19,8 @@ import { X, Upload, FileText, WifiOff, MapPin, BedDouble } from 'lucide-react';
 
 interface CreateModalProps {
   // Both are provided when opened by clicking a specific grid slot. Left
-  // undefined when opened from the generic "+ Add Event" button instead —
-  // in that case we fall back to today (or the trip's first day) and leave
-  // the event untimed until the user picks a time themselves.
+  // undefined otherwise — then we fall back to today (or the trip's first
+  // day) and leave the event untimed until the user picks a time themselves.
   date?: string;
   startTime?: string;
   // Pre-filled fields, e.g. when adding something Aero suggested.

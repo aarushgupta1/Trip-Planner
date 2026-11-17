@@ -75,10 +75,11 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
           {trip.is_owner && (
             <Link
               href={`/trips/${trip.id}/edit`}
-              title="Trip settings"
-              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              title="Edit trip settings: name, dates and cities"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
-              <Settings2 size={16} />
+              <Settings2 size={14} />
+              <span className="hidden sm:inline">Trip settings</span>
             </Link>
           )}
           <ThemeToggle />

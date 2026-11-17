@@ -149,10 +149,11 @@ export default function TripCard({
             <div className="pointer-events-auto relative z-10 flex items-center gap-0.5 sm:absolute sm:bottom-1 sm:right-1">
               <Link
                 href={`/trips/${id}/edit`}
-                title="Edit trip"
-                className="p-1.5 rounded text-[var(--muted)] hover:text-[var(--ink)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                title="Edit trip: name, dates and cities"
+                className="inline-flex items-center gap-1 px-1.5 py-1 rounded text-[11px] font-medium text-[var(--muted)] hover:text-[var(--blue)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
               >
-                <Pencil size={14} />
+                <Pencil size={13} />
+                Edit
               </Link>
               <button
                 onClick={() => setConfirming(true)}

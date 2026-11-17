@@ -49,7 +49,7 @@ import type { GuideSuggestion } from '@/lib/guide';
 import SearchJumpBox from './SearchJumpBox';
 import MoreMenu from './MoreMenu';
 import TimeLabels from './TimeLabels';
-import { ChevronLeft, ChevronRight, Pencil, PanelLeftOpen, WifiOff, CalendarDays, Plus, Search, ArrowRight, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, PanelLeftOpen, WifiOff, CalendarDays, Search, ArrowRight, Sparkles } from 'lucide-react';
 
 // Leaflet touches `window`/`document` at import time, so it can only ever
 // load on the client — ssr: false keeps it (and its CSS) out of the server
@@ -235,9 +235,6 @@ export default function CalendarBoard({
   >(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [createSlot, setCreateSlot] = useState<{ date: string; time: string } | null>(null);
-  // Set when "+ Add Event" is used instead of clicking a specific grid slot —
-  // CreateModal falls back to sensible defaults (today, untimed) in that case.
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
@@ -856,18 +853,6 @@ export default function CalendarBoard({
                   <Sparkles size={13} />
                   <span className="hidden sm:inline">Aero</span>
                 </button>
-                {/* Add event — opens the same modal a grid click would, just without
-                    a slot pre-picked (defaults to today/untimed, editable inside) */}
-                <button
-                  onClick={() => setShowQuickAdd(true)}
-                  disabled={!isOnline}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-semibold transition-colors"
-                  title="Add an event to any day"
-                >
-                  <Plus size={13} />
-                  <span className="hidden sm:inline">Add Event</span>
-                </button>
-
                 {/* Jump to today — only relevant while the trip is actually underway */}
                 {now && TRIP_DATES.includes(now.date) && (
                   <button
@@ -999,18 +984,17 @@ export default function CalendarBoard({
         />
       )}
 
-      {(createSlot || showQuickAdd || guideSuggestion) && (
+      {(createSlot || guideSuggestion) && (
         <CreateModal
           date={createSlot?.date ?? guideSuggestion?.date}
           startTime={createSlot?.time ?? (guideSuggestion?.start_time || undefined)}
           prefill={guideSuggestion ?? undefined}
           allAttractions={attractions}
           hotels={hotels}
-          onClose={() => { setCreateSlot(null); setShowQuickAdd(false); setGuideSuggestion(null); }}
+          onClose={() => { setCreateSlot(null); setGuideSuggestion(null); }}
           onCreated={(attraction) => {
             handleAttractionCreated(attraction);
             setCreateSlot(null);
-            setShowQuickAdd(false);
             setGuideSuggestion(null);
           }}
         />
