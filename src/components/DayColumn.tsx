@@ -144,9 +144,10 @@ interface DayColumnProps {
   // Minutes-since-midnight (destination-local) for "right now", only passed in for
   // whichever column is actually today — draws the current-time line.
   nowMinutes?: number | null;
+  dimmed?: boolean; // another day's hourly weather is showing
 }
 
-export default function DayColumn({ date, attractions, onAttractionClick, onTimeSlotClick, onAttractionResize, travelSegments, travelModes, onTravelModeChange, readOnly = false, nowMinutes = null }: DayColumnProps) {
+export default function DayColumn({ date, attractions, onAttractionClick, onTimeSlotClick, onAttractionResize, travelSegments, travelModes, onTravelModeChange, readOnly = false, nowMinutes = null, dimmed = false }: DayColumnProps) {
   const timedAttractions = attractions
     .filter((a) => a.start_time)
     .sort((a, b) => a.start_time!.localeCompare(b.start_time!));
@@ -221,7 +222,7 @@ export default function DayColumn({ date, attractions, onAttractionClick, onTime
   };
 
   return (
-    <div className="flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex-1 min-w-0" style={{ height: gridHeight }}>
+    <div className={['flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex-1 min-w-0 transition-opacity duration-200', dimmed ? 'opacity-35' : ''].join(' ')} style={{ height: gridHeight }}>
       <div className={['relative flex-shrink-0', readOnly ? 'cursor-default' : 'cursor-pointer'].join(' ')} style={{ height: gridHeight }} onClick={handleGridClick}>
         {Array.from({ length: GRID_END_HOUR - GRID_START_HOUR }, (_, i) =>
           i === 0 ? null : (

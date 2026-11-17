@@ -18,7 +18,8 @@ import { formatDate, timeAgo, formatTimeInZone, getHotelDates } from '@/lib/util
 import { getEditorName } from '@/lib/editorName';
 import { cityKey } from '@/lib/trip';
 import { useTrip } from './TripProvider';
-import { DayWeather, weatherCodeInfo, weatherKindLabel } from '@/lib/weather';
+import { DayWeather, HourlyWeather, weatherCodeInfo, weatherKindLabel } from '@/lib/weather';
+import { getDayHourly } from '@/app/trips/extras';
 import { getWordOfDay } from '@/lib/wordOfDay';
 import { TravelSegment, TravelMode } from '@/lib/travel';
 import {
@@ -47,7 +48,6 @@ import CreateModal from './CreateModal';
 import GuidePanel from './GuidePanel';
 import type { GuideSuggestion } from '@/lib/guide';
 import NotificationsMenu from './NotificationsMenu';
-import HourlyWeatherModal from './HourlyWeatherModal';
 import TimeLabels from './TimeLabels';
 import { ChevronLeft, ChevronRight, Pencil, PanelLeftOpen, WifiOff, CalendarDays, ArrowRight, Plane, Clock, Map as MapIcon } from 'lucide-react';
 
@@ -62,8 +62,12 @@ function pageForDate(dates: string[], date: string, daysPerPage: number): number
 }
 
 
+function hourlyKindShort(kind: DayWeather['kind']): string {
+  return kind === 'forecast' ? 'Forecast' : kind === 'observed' ? 'Recorded' : 'Typical';
+}
+
 function DayHeader({
-  date, note, onNoteChange, onNoteCommit, weather, hotels, onHotelClick, onOpenMap, onOpenHourly, readOnly, isToday, prevDate,
+  date, note, onNoteChange, onNoteCommit, weather, hotels, onHotelClick, onOpenMap, onOpenHourly, hourlyActive, hourlyLoading, dimmed, readOnly, isToday, prevDate,
 }: {
   date: string;
   // The day before this one on screen (undefined for the first visible day).
@@ -76,6 +80,9 @@ function DayHeader({
   onHotelClick: (hotel: Hotel) => void;
   onOpenMap: () => void;
   onOpenHourly: () => void;
+  hourlyActive: boolean;
+  hourlyLoading: boolean;
+  dimmed: boolean; // another day's hourly weather is showing
   readOnly: boolean;
   isToday: boolean;
 }) {
@@ -98,7 +105,8 @@ function DayHeader({
   return (
     <div
       className={[
-        'flex-1 border-l border-gray-100 dark:border-gray-800 first:border-l-0 flex flex-col',
+        'flex-1 border-l border-gray-100 dark:border-gray-800 first:border-l-0 flex flex-col transition-opacity duration-200',
+        dimmed ? 'opacity-35' : '',
         isToday ? 'bg-blue-50/60 dark:bg-blue-950/30 border-t-2 border-t-red-600 dark:border-t-red-500' : '',
       ].join(' ')}
     >
@@ -155,11 +163,17 @@ function DayHeader({
         {weather && weather.length > 0 && (
           <button
             onClick={onOpenHourly}
-            className="mt-1 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40 transition-colors"
-            title="See the weather hour by hour"
+            className={[
+              'mt-1 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold transition-colors',
+              hourlyActive
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40',
+            ].join(' ')}
+            title={hourlyActive ? 'Hide the hourly weather' : 'See the weather hour by hour'}
+            aria-pressed={hourlyActive}
           >
             <Clock size={9} />
-            Hourly weather
+            {hourlyLoading ? 'Loading…' : hourlyActive ? 'Hide hourly weather' : 'Hourly weather'}
           </button>
         )}
         {hotelsToday.length > 0 && (
@@ -245,6 +259,9 @@ interface PendingDelete {
 }
 
 const UNDO_WINDOW_MS = 7000;
+// Width of the time-label gutter: plain, and wide enough for hourly weather.
+const TIME_LABELS_PX = 64;
+const TIME_LABELS_HOURLY_PX = 112;
 
 export default function CalendarBoard({
   initialAttractions,
@@ -274,6 +291,8 @@ export default function CalendarBoard({
   const [mapDate, setMapDate] = useState<string | null>(null);
   // The day whose hourly weather is open (null = closed).
   const [hourlyDate, setHourlyDate] = useState<string | null>(null);
+  const [hourly, setHourly] = useState<HourlyWeather[] | null>(null);
+  const hourlyRequest = useRef<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
   // An event Aero suggested, opened in the normal add-event form for review.
   const [guideSuggestion, setGuideSuggestion] = useState<GuideSuggestion | null>(null);
@@ -508,23 +527,60 @@ export default function CalendarBoard({
     });
   };
 
+  // Same button turns hourly weather on for a day and off again.
+  const toggleHourly = (date: string) => {
+    if (hourlyDate === date) {
+      hourlyRequest.current = null;
+      setHourlyDate(null);
+      setHourly(null);
+      return;
+    }
+    hourlyRequest.current = date;
+    setHourlyDate(date);
+    setHourly(null);
+    const giveUp = (message: string) => {
+      if (hourlyRequest.current !== date) return; // the choice changed meanwhile
+      hourlyRequest.current = null;
+      setHourlyDate(null);
+      setToastMsg(message);
+    };
+    getDayHourly(trip.id, date)
+      .then((data) => {
+        if (hourlyRequest.current !== date) return;
+        if (data.length === 0) giveUp('No hourly weather is available for that day yet.');
+        else setHourly(data);
+      })
+      .catch(() => giveUp("Couldn't load the hourly weather — try again in a moment."));
+  };
+
   const updateTravelMode = (pairKey: string, mode: TravelMode) => {
     setTravelModes((prev) => ({ ...prev, [pairKey]: mode }));
   };
+
+  const totalPages = Math.ceil(TRIP_DATES.length / daysPerPage);
+  const visibleDates = TRIP_DATES.slice(
+    currentPage * daysPerPage,
+    (currentPage + 1) * daysPerPage
+  );
+
+  // Hourly weather for one chosen day, shown beside the time labels while the
+  // other days fade back. Only counts while that day is on screen.
+  const hourlyVisible = !!hourlyDate && visibleDates.includes(hourlyDate);
+  const hourlyShown = hourlyVisible && !!hourly;
+  const labelWidthPx = hourlyShown ? TIME_LABELS_HOURLY_PX : TIME_LABELS_PX;
 
   // Keep colWidth in sync with the actual rendered column width
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const TIME_LABELS_PX = 64; // w-16
     const update = () =>
-      setColWidth(Math.max(80, (el.offsetWidth - TIME_LABELS_PX) / visibleDates.length));
+      setColWidth(Math.max(80, (el.offsetWidth - labelWidthPx) / visibleDates.length));
     update();
     const obs = new ResizeObserver(update);
     obs.observe(el);
     return () => obs.disconnect();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage]); // re-measure whenever the page (and thus column count) changes
+  }, [currentPage, labelWidthPx]); // re-measure whenever the page (and thus column count) or label width changes
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -533,11 +589,6 @@ export default function CalendarBoard({
     useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 8 } })
   );
 
-  const totalPages = Math.ceil(TRIP_DATES.length / daysPerPage);
-  const visibleDates = TRIP_DATES.slice(
-    currentPage * daysPerPage,
-    (currentPage + 1) * daysPerPage
-  );
 
   const scheduledByDate = TRIP_DATES.reduce<Record<string, Attraction[]>>((acc, date) => {
     acc[date] = attractions.filter((a) => a.scheduled_date === date);
@@ -863,7 +914,17 @@ export default function CalendarBoard({
 
             {/* Header row: time-label spacer + day names */}
             <div className="flex border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
-              <div className="w-16 shrink-0 border-r border-gray-100 dark:border-gray-800" />
+              <div
+                className="shrink-0 border-r border-gray-100 dark:border-gray-800 flex flex-col items-center justify-end pb-1.5 text-center transition-[width] duration-200"
+                style={{ width: labelWidthPx }}
+              >
+                {hourlyShown && hourly && hourly[0] && (
+                  <>
+                    <span className="max-w-full truncate px-1 text-[9px] font-semibold text-blue-600 dark:text-blue-400">{hourly[0].cityName}</span>
+                    <span className="text-[9px] text-gray-400 dark:text-gray-500">{hourlyKindShort(hourly[0].kind)}</span>
+                  </>
+                )}
+              </div>
 
               {visibleDates.map((date, i) => (
                 <DayHeader
@@ -875,7 +936,10 @@ export default function CalendarBoard({
                   hotels={hotels}
                   onHotelClick={(hotel) => setHotelModalState({ mode: 'edit', hotel })}
                   onOpenMap={() => setMapDate(date)}
-                  onOpenHourly={() => setHourlyDate(date)}
+                  onOpenHourly={() => toggleHourly(date)}
+                  hourlyActive={hourlyVisible && hourlyDate === date}
+                  hourlyLoading={hourlyVisible && hourlyDate === date && !hourly}
+                  dimmed={hourlyVisible && hourlyDate !== date}
                   onNoteChange={(v) => updateDayNote(date, v)}
                   onNoteCommit={(v) => commitDayNote(date, v)}
                   readOnly={!isOnline}
@@ -886,7 +950,7 @@ export default function CalendarBoard({
 
             {/* Anytime-zone spacer in time-label column + scrollable grid */}
             <div ref={scrollRef} className="flex flex-1 overflow-y-auto overflow-x-hidden">
-              <TimeLabels />
+              <TimeLabels widthPx={labelWidthPx} hourly={hourlyShown ? (hourly?.[0]?.hours ?? null) : null} />
               {visibleDates.map((date) => (
                 <DayColumn
                   key={date}
@@ -900,6 +964,7 @@ export default function CalendarBoard({
                   onTravelModeChange={updateTravelMode}
                   readOnly={!isOnline}
                   nowMinutes={date === now?.date ? now.minutes : null}
+                  dimmed={hourlyVisible && hourlyDate !== date}
                 />
               ))}
             </div>
@@ -1006,7 +1071,6 @@ export default function CalendarBoard({
         />
       )}
 
-      {hourlyDate && <HourlyWeatherModal date={hourlyDate} onClose={() => setHourlyDate(null)} />}
 
       {hotelModalState && (
         <HotelModal
