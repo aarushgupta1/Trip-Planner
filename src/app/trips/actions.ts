@@ -53,14 +53,14 @@ export async function searchCities(query: string): Promise<CitySuggestion[]> {
   }
 }
 
-type TripRow = { id: string; owner_id: string | null; name: string; start_date: string; end_date: string; timezone: string; home_timezone: string };
-const TRIP_COLUMNS = 'id, owner_id, name, start_date, end_date, timezone, home_timezone';
+type TripRow = { id: string; created_at: string | null; owner_id: string | null; name: string; start_date: string; end_date: string; timezone: string; home_timezone: string };
+const TRIP_COLUMNS = 'id, created_at, owner_id, name, start_date, end_date, timezone, home_timezone';
 
 // A trip plus whether the signed-in user owns it (as opposed to having been
 // invited). Only owners can edit trip settings, share or delete.
 export type SharedTrip = Trip & { is_owner: boolean };
 
-export async function getTrips(): Promise<(SharedTrip & { people: TripPerson[] })[]> {
+export async function getTrips(): Promise<(SharedTrip & { people: TripPerson[]; ticket_no: number })[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createSupabaseServer();
   // One query for the trips and their stops together.
@@ -75,10 +75,20 @@ export async function getTrips(): Promise<(SharedTrip & { people: TripPerson[] }
   // show no passengers line — never a broken dashboard.
   const people = (peopleRows ?? []) as (TripPerson & { trip_id: string })[];
 
-  return ((rows ?? []) as (TripRow & { trip_cities: TripCity[] })[]).map((row) => ({
+  const list = (rows ?? []) as (TripRow & { trip_cities: TripCity[] })[];
+  // Ticket numbers count up from 1 in the order the trips were created, so a
+  // trip keeps its number as others are added.
+  const ticketNo = new Map(
+    [...list]
+      .sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? '') || a.id.localeCompare(b.id))
+      .map((row, i) => [row.id, i + 1])
+  );
+
+  return list.map((row) => ({
     ...toTrip(row, row.trip_cities ?? []),
     is_owner: row.owner_id === user?.id,
     people: people.filter((p) => p.trip_id === row.id),
+    ticket_no: ticketNo.get(row.id) ?? 0,
   }));
 }
 

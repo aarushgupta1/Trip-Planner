@@ -1,6 +1,6 @@
 // Small pure helpers for the trip "ticket" cards: a three-letter code per
-// city (like an airport code), a stable ticket number and a barcode, all
-// derived from the trip so each ticket is its own but never changes.
+// city (like an airport code), and a barcode, derived from the trip so each
+// ticket is its own but never changes.
 
 function normalize(s: string): string {
   return s
@@ -33,10 +33,6 @@ function hash(id: string): number {
     h = Math.imul(h, 16777619);
   }
   return h >>> 0;
-}
-
-export function ticketNumber(id: string): string {
-  return String(hash(id) % 10000).padStart(4, '0');
 }
 
 // Bar widths (1–3 units) for a barcode that is the same every time for a trip.

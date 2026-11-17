@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Pencil, Trash2 } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 import { deleteTrip } from '@/app/trips/actions';
-import { barcodeBars, cityCode, formatPassengers, ticketNumber } from '@/lib/ticket';
+import { barcodeBars, cityCode, formatPassengers } from '@/lib/ticket';
 
 const MAX_STOPS_SHOWN = 4;
 
@@ -38,6 +38,7 @@ export default function TripCard({
   status,
   isOwner,
   passengers,
+  number,
 }: {
   id: string;
   name: string;
@@ -48,6 +49,7 @@ export default function TripCard({
   status: { label: string; tone: 'live' | 'soon' | 'past' };
   isOwner: boolean;
   passengers: string[]; // everyone on the trip, owner first
+  number: number; // 1 for your first trip, 2 for the next, and so on
 }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
@@ -88,7 +90,7 @@ export default function TripCard({
         <div className="relative pointer-events-none px-5 pt-4 pb-4 sm:px-6 sm:pt-4 sm:pb-4 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="font-mono text-[11px] tracking-[0.08em] text-[var(--red)]">TRIP {ticketNumber(id)}</div>
+              <div className="font-mono text-[11px] tracking-[0.08em] text-[var(--red)]">TRIP {number}</div>
               <h2 className="mt-0.5 text-base sm:text-[17px] font-semibold leading-snug tracking-tight truncate" title={name}>{name}</h2>
             </div>
             <span

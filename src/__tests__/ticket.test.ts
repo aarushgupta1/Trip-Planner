@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { barcodeBars, cityCode, formatPassengers, ticketNumber } from '@/lib/ticket';
+import { barcodeBars, cityCode, formatPassengers } from '@/lib/ticket';
 
 describe('ticket helpers', () => {
   it('makes three-letter city codes', () => {
@@ -12,8 +12,6 @@ describe('ticket helpers', () => {
     expect(cityCode('')).toBe('---');
   });
   it('is deterministic per trip id', () => {
-    expect(ticketNumber('abc')).toBe(ticketNumber('abc'));
-    expect(ticketNumber('abc')).toMatch(/^\d{4}$/);
     expect(barcodeBars('abc')).toEqual(barcodeBars('abc'));
     expect(barcodeBars('abc')).toHaveLength(30);
     expect(barcodeBars('abc').every((w) => w >= 1 && w <= 3)).toBe(true);
