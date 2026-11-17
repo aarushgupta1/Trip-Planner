@@ -34,6 +34,10 @@ export async function isGuideEnabled(): Promise<boolean> {
   return !!process.env.ANTHROPIC_API_KEY;
 }
 
+export async function isPlaceLookupEnabled(): Promise<boolean> {
+  return !!process.env.GOOGLE_PLACES_API_KEY;
+}
+
 // One turn of the chat. Everything the model sees about the trip is re-read
 // from the database here (as the signed-in user, so Row Level Security
 // applies) — never taken from the browser — and the API key never leaves the

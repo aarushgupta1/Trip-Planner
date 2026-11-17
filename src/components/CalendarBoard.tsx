@@ -314,8 +314,10 @@ export default function CalendarBoard({
   initialDayNotes,
   initialHotels,
   guideEnabled,
+  placesEnabled,
 }: {
   guideEnabled: boolean;
+  placesEnabled: boolean;
   initialAttractions: Attraction[];
   weather: Record<string, DayWeather[]>;
   travelSegments: Record<string, TravelSegment>;
@@ -1105,6 +1107,7 @@ export default function CalendarBoard({
         <GuidePanel
           tripId={trip.id}
           chatEnabled={guideEnabled}
+          placesEnabled={placesEnabled}
           attractions={attractions}
           hotels={hotels}
           onAddSuggestion={setGuideSuggestion}

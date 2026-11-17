@@ -15,6 +15,7 @@ export default function CalendarBoardClient(props: {
   initialDayNotes: Record<string, string>;
   initialHotels: Hotel[];
   guideEnabled: boolean;
+  placesEnabled: boolean;
 }) {
   const { trip, ...rest } = props;
   // Weather and travel times arrive a moment after the calendar itself.

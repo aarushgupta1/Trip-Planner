@@ -12,7 +12,7 @@ import UserMenu from '@/components/UserMenu';
 import { getCurrentUser } from '@/lib/supabase/server';
 import { formatCityList } from '@/lib/trip';
 import { formatDateRange } from '@/lib/utils';
-import { isGuideEnabled } from '@/app/guide/actions';
+import { isGuideEnabled, isPlaceLookupEnabled } from '@/app/guide/actions';
 
 export async function generateMetadata({ params }: { params: Promise<{ tripId: string }> }) {
   const { tripId } = await params;
@@ -97,6 +97,7 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
           initialDayNotes={dayNotes}
           initialHotels={hotels}
           guideEnabled={await isGuideEnabled()}
+          placesEnabled={await isPlaceLookupEnabled()}
         />
       </div>
     </main>
