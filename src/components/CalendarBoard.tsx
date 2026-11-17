@@ -189,6 +189,15 @@ function DayHeader({
         )}
       </div>
       <div className="px-1.5 pb-1.5">
+        {/* Map for just this day */}
+        <button
+          onClick={onOpenMap}
+          className="mb-0.5 flex w-full items-center gap-1 rounded px-1.5 py-0.5 text-left text-[9px] font-medium text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors"
+          title="See this day on a map"
+        >
+          <MapIcon size={9} />
+          See this day on a map
+        </button>
         {editing ? (
           <textarea
             autoFocus
@@ -216,15 +225,6 @@ function DayHeader({
             )}
           </button>
         )}
-        {/* Map for just this day */}
-        <button
-          onClick={onOpenMap}
-          className="mt-0.5 flex w-full items-center gap-1 rounded px-1.5 py-0.5 text-left text-[9px] font-medium text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors"
-          title="See this day on a map"
-        >
-          <MapIcon size={9} />
-          See this day on a map
-        </button>
       </div>
     </div>
   );
