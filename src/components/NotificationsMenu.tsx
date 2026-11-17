@@ -90,7 +90,7 @@ export default function NotificationsMenu({
       : 'Turn on event alerts';
 
   return (
-    <div className="relative shrink-0">
+    <div className="relative shrink-0 ml-auto">
       <button
         onClick={handleClick}
         disabled={busy}

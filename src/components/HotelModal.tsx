@@ -368,8 +368,11 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
-              <div className="relative flex-1">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400 dark:text-blue-500 font-bold pointer-events-none">
+              {/* The symbol sits in front of the field as its own piece (not
+                  overlaid on it), so a wide symbol like "CHF" or "R$" can
+                  never cover what's typed or the placeholder. */}
+              <div className="flex min-w-0 flex-1 items-center rounded-lg border border-blue-200 bg-white focus-within:ring-2 focus-within:ring-blue-500 dark:border-blue-800 dark:bg-gray-900">
+                <span className="shrink-0 pl-3.5 pr-1.5 font-bold text-blue-400 dark:text-blue-500">
                   {currencySymbol(form.currency).trim()}
                 </span>
                 <input
@@ -381,7 +384,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
                   onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                   disabled={!isOnline}
                   placeholder="0.00"
-                  className="w-full pl-9 pr-3 py-2.5 border border-blue-200 dark:border-blue-800 rounded-lg text-lg font-bold bg-white dark:bg-gray-900 text-blue-700 dark:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-blue-200 dark:placeholder-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="min-w-0 flex-1 bg-transparent py-2.5 pr-3 text-lg font-bold text-blue-700 placeholder-blue-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:text-blue-300 dark:placeholder-blue-800"
                 />
               </div>
             </div>

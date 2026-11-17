@@ -46,11 +46,10 @@ import EditModal from './EditModal';
 import CreateModal from './CreateModal';
 import GuidePanel from './GuidePanel';
 import type { GuideSuggestion } from '@/lib/guide';
-import SearchJumpBox from './SearchJumpBox';
 import NotificationsMenu from './NotificationsMenu';
 import HourlyWeatherModal from './HourlyWeatherModal';
 import TimeLabels from './TimeLabels';
-import { ChevronLeft, ChevronRight, Pencil, PanelLeftOpen, WifiOff, CalendarDays, Search, ArrowRight, Plane, Clock, Map as MapIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, PanelLeftOpen, WifiOff, CalendarDays, ArrowRight, Plane, Clock, Map as MapIcon } from 'lucide-react';
 
 // Leaflet touches `window`/`document` at import time, so it can only ever
 // load on the client — ssr: false keeps it (and its CSS) out of the server
@@ -271,7 +270,6 @@ export default function CalendarBoard({
   >(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [createSlot, setCreateSlot] = useState<{ date: string; time: string } | null>(null);
-  const [showSearch, setShowSearch] = useState(false);
   // The day whose map is open (null = closed).
   const [mapDate, setMapDate] = useState<string | null>(null);
   // The day whose hourly weather is open (null = closed).
@@ -395,22 +393,6 @@ export default function CalendarBoard({
     return () => {
       pendingDeletesRef.current.forEach((p) => clearTimeout(p.timeoutId));
     };
-  }, []);
-
-  // "/" opens search/jump from anywhere, like most search-heavy apps —
-  // except while the user is actually typing into a text field (day notes,
-  // form inputs, etc.), where "/" should just be a normal character.
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== '/') return;
-      const target = e.target as HTMLElement | null;
-      const tag = target?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
-      e.preventDefault();
-      setShowSearch(true);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
   useEffect(() => {
@@ -784,25 +766,12 @@ export default function CalendarBoard({
                 represent permanently different things, not a preference to
                 flip back and forth. */}
             <div className="flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-950/40 border-b border-gray-100 dark:border-gray-800 px-2 py-1 shrink-0">
-              {/* Search/jump — find an event by name or hop straight to any
-                  trip day, without paging through the calendar one screen at
-                  a time. Also reachable via the "/" keyboard shortcut. */}
-              <button
-                onClick={() => setShowSearch(true)}
-                className="flex items-center px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0 self-start"
-                title="Search events or jump to a day (/)"
-                aria-label="Search events or jump to a day"
-              >
-                <Search size={13} />
-              </button>
-
               {/* "Up next" — the very next timed event from now, so you can
                   tell what's coming without paging through the calendar.
                   Clicking it jumps straight to that event. Hidden once
                   there's nothing left to look forward to (e.g. after the
                   trip's last event has passed). Wrapped in a flex-1
-                  container so it still centers in the space between Search
-                  and More, but the pill itself only grows to fit its
+                  container so it still centers in the space left of the alerts bell, but the pill itself only grows to fit its
                   content (capped) rather than stretching full-width — kept
                   visually quiet (gray, not blue) so it doesn't compete with
                   actual buttons. */}
@@ -1025,15 +994,6 @@ export default function CalendarBoard({
             setCreateSlot(null);
             setGuideSuggestion(null);
           }}
-        />
-      )}
-
-      {showSearch && (
-        <SearchJumpBox
-          attractions={attractions}
-          onClose={() => setShowSearch(false)}
-          onJumpToDate={(date) => setCurrentPage(pageForDate(TRIP_DATES, date, daysPerPage))}
-          onSelectAttraction={(attraction) => setEditingAttraction(attraction)}
         />
       )}
 
