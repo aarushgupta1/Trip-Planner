@@ -6,9 +6,11 @@ import { getTrip } from '@/app/trips/actions';
 import { generateTripDates } from '@/lib/trip';
 import { getWeatherForDates } from '@/lib/weather';
 import { checkItinerary } from '@/lib/itineraryCheck';
+import { formatPlaceForModel, lookupPlace } from '@/lib/places';
 import {
   GuideMessage,
   GuideSuggestion,
+  LOOKUP_PLACE_TOOL,
   SUGGEST_EVENTS_TOOL,
   buildGuideContext,
   buildGuideSystemPrompt,
@@ -19,8 +21,12 @@ import {
 const DEFAULT_MODEL = 'claude-haiku-5-5';
 const DEFAULT_DAILY_LIMIT = 40;
 const MAX_OUTPUT_TOKENS = 2000;
+// Live lookups cost real money, so each answer is capped. Tunable per deployment.
+const DEFAULT_MAX_LOOKUPS = 3;
+const MAX_TOOL_ROUNDS = 4;
 
-export type GuideResult = { reply: string; suggestions: GuideSuggestion[] } | { error: string };
+// `checked` lists places whose facts were looked up live for this answer.
+export type GuideResult = { reply: string; suggestions: GuideSuggestion[]; checked: string[] } | { error: string };
 
 export async function isGuideEnabled(): Promise<boolean> {
   return !!process.env.ANTHROPIC_API_KEY;
@@ -54,12 +60,19 @@ export async function askGuide(tripId: string, rawMessages: GuideMessage[]): Pro
     getWeatherForDates(trip).catch(() => ({})),
   ]);
   const issues = checkItinerary({ dates, attractions, hotels });
-  const system = buildGuideSystemPrompt(buildGuideContext({ trip, attractions, hotels, dayNotes, weather, issues }));
+  const placesKey = process.env.GOOGLE_PLACES_API_KEY;
+  const lookupEnabled = !!placesKey;
+  const system = buildGuideSystemPrompt(buildGuideContext({ trip, attractions, hotels, dayNotes, weather, issues }), { lookupEnabled });
+  const maxLookups = Number(process.env.GUIDE_MAX_LOOKUPS) || DEFAULT_MAX_LOOKUPS;
 
-  type Block = { type: string; text?: string; name?: string; input?: unknown };
+  type Block = { type: string; id?: string; text?: string; name?: string; input?: unknown };
+  type ApiMessage = { role: 'user' | 'assistant'; content: string | unknown[] };
   type Outcome = { ok: true; blocks: Block[]; stopReason: string | null } | { ok: false; error: string };
 
-  const call = async (withTools: boolean): Promise<Outcome> => {
+  const call = async (history: ApiMessage[], opts: { withTools: boolean }): Promise<Outcome> => {
+    const tools: unknown[] = [];
+    if (opts.withTools) tools.push(SUGGEST_EVENTS_TOOL);
+    if (opts.withTools && lookupEnabled) tools.push(LOOKUP_PLACE_TOOL);
     let res: Response;
     try {
       res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -69,8 +82,8 @@ export async function askGuide(tripId: string, rawMessages: GuideMessage[]): Pro
           model: process.env.GUIDE_MODEL || DEFAULT_MODEL,
           max_tokens: MAX_OUTPUT_TOKENS,
           system,
-          messages,
-          ...(withTools ? { tools: [SUGGEST_EVENTS_TOOL] } : {}),
+          messages: history,
+          ...(tools.length ? { tools } : {}),
         }),
         signal: AbortSignal.timeout(45_000),
       });
@@ -89,34 +102,71 @@ export async function askGuide(tripId: string, rawMessages: GuideMessage[]): Pro
     return { ok: true, blocks: data.content ?? [], stopReason: data.stop_reason ?? null };
   };
 
-  const read = (blocks: Block[]) => ({
-    reply: blocks
+  const textOf = (blocks: Block[]) =>
+    blocks
       .filter((b) => b.type === 'text' && b.text)
       .map((b) => b.text)
       .join('\n\n')
-      .trim(),
-    suggestions: blocks
+      .trim();
+  const suggestionsOf = (blocks: Block[]) =>
+    blocks
       .filter((b) => b.type === 'tool_use' && b.name === SUGGEST_EVENTS_TOOL.name)
-      .flatMap((b) => parseSuggestions(b.input, dates)),
-  });
+      .flatMap((b) => parseSuggestions(b.input, dates));
 
-  const first = await call(true);
-  if (!first.ok) return { error: first.error };
-  const initial = read(first.blocks);
-  const { suggestions } = initial;
-  let reply = initial.reply;
+  // The conversation, extended each time Aero asks to look something up: its
+  // request goes in, the live result comes back, and it continues.
+  const history: ApiMessage[] = [...messages];
+  const suggestions: GuideSuggestion[] = [];
+  const checked: string[] = [];
+  let lookups = 0;
+  let reply = '';
+
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    const out = await call(history, { withTools: true });
+    if (!out.ok) return { error: out.error };
+    suggestions.push(...suggestionsOf(out.blocks));
+    const text = textOf(out.blocks);
+    if (text) reply = text;
+
+    const lookupCalls = out.blocks.filter((b) => b.type === 'tool_use' && b.name === LOOKUP_PLACE_TOOL.name);
+    if (out.stopReason !== 'tool_use' || lookupCalls.length === 0 || !placesKey) break;
+
+    const results = await Promise.all(
+      out.blocks
+        .filter((b) => b.type === 'tool_use')
+        .map(async (b) => {
+          if (b.name !== LOOKUP_PLACE_TOOL.name) {
+            return { type: 'tool_result', tool_use_id: b.id, content: 'Shown to the user.' };
+          }
+          if (lookups >= maxLookups) {
+            return { type: 'tool_result', tool_use_id: b.id, content: 'Lookup limit reached for this answer. Use what you already have.' };
+          }
+          lookups++;
+          const query = String((b.input as { query?: unknown } | undefined)?.query ?? '');
+          const place = await lookupPlace(query, placesKey);
+          if (place) checked.push(place.name);
+          return {
+            type: 'tool_result',
+            tool_use_id: b.id,
+            content: place ? formatPlaceForModel(place) : `No result found for "${query}". Say you could not confirm it.`,
+          };
+        })
+    );
+    history.push({ role: 'assistant', content: out.blocks });
+    history.push({ role: 'user', content: results });
+  }
 
   // The model sometimes answers with only a tool call (or one that held no
-  // usable events) and no text. Ask again without the tool so a plain answer
+  // usable events) and no text. Ask again without tools so a plain answer
   // always comes back, e.g. for "is my plan too packed?".
   if (!reply) {
-    console.warn('Aero gave no text; retrying without tools', first.stopReason, first.blocks.map((b) => b.type));
-    const second = await call(false);
+    console.warn('Aero gave no text; retrying without tools');
+    const second = await call([...messages], { withTools: false });
     if (!second.ok) return { error: second.error };
-    reply = read(second.blocks).reply;
+    reply = textOf(second.blocks);
     if (!reply) console.error('Aero returned no text on retry', second.stopReason, second.blocks.map((b) => b.type));
   }
 
   if (!reply && suggestions.length === 0) return { error: 'Aero had nothing to add — try rephrasing.' };
-  return { reply: reply || 'Here are some ideas:', suggestions };
+  return { reply: reply || 'Here are some ideas:', suggestions: suggestions.slice(0, 6), checked: [...new Set(checked)] };
 }

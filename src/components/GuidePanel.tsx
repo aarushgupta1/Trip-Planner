@@ -11,6 +11,7 @@ import { useTrip } from './TripProvider';
 
 interface ChatTurn extends GuideMessage {
   suggestions?: GuideSuggestion[];
+  checked?: string[]; // places whose hours etc. were looked up live
   failed?: boolean;
 }
 
@@ -58,7 +59,7 @@ export default function GuidePanel({
       setTurns((prev) =>
         'error' in result
           ? [...prev, { role: 'assistant', content: result.error, failed: true }]
-          : [...prev, { role: 'assistant', content: result.reply, suggestions: result.suggestions }]
+          : [...prev, { role: 'assistant', content: result.reply, suggestions: result.suggestions, checked: result.checked }]
       );
     });
   };
@@ -163,6 +164,11 @@ export default function GuidePanel({
                 >
                   {t.content}
                 </div>
+                {t.checked && t.checked.length > 0 && (
+                  <p className="mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">
+                    Checked live on Google Maps: {t.checked.join(', ')}
+                  </p>
+                )}
                 {t.suggestions && t.suggestions.length > 0 && (
                   <ul className="mt-2 space-y-2">
                     {t.suggestions.map((s, j) => (

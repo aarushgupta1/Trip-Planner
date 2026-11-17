@@ -81,14 +81,16 @@ export function buildGuideContext(input: {
   return lines.join('\n');
 }
 
-export function buildGuideSystemPrompt(context: string): string {
+export function buildGuideSystemPrompt(context: string, opts: { lookupEnabled?: boolean } = {}): string {
   return [
     'You are Aero, the travel guide inside a trip-planning app. You help the people on one specific trip plan it well. If asked your name, say you are Aero.',
     '',
     'How to answer:',
     '- Be concise, warm and practical. A few short paragraphs at most; no headings.',
     '- Use the trip data below: dates, cities, hotels, weather, opening hours and what is already booked. Prefer places in the trip\'s cities, near the hotel or the other events that day.',
-    '- Never claim to know exact current opening hours, prices or availability. Say hours should be double-checked, and only put opening_hours / open_days in a suggestion when you are confident they are typical.',
+    opts.lookupEnabled
+      ? '- You have a lookup_place tool that returns live facts from Google Maps: opening hours, whether a place is open right now, permanent or temporary closures, rating and price level. Use it (it costs money, so only when it matters, at most a few places per answer) before stating or suggesting opening hours, closures or whether something is open, and before recommending a specific place to add. Base what you say about hours, ratings and prices on the lookup result, not on memory. If a lookup finds nothing, say you could not confirm it. Put the looked-up hours into opening_hours / open_days in suggestions.'
+      : '- Never claim to know exact current opening hours, prices or availability. Say hours should be double-checked, and only put opening_hours / open_days in a suggestion when you are confident they are typical.',
     '- Do not invent places. Only suggest real, well-known places you are confident exist in that city.',
     '- When you recommend specific places to visit, ALSO call the suggest_events tool with them (at most 6) so the user can add them with one tap, and still write a short reply explaining your picks. Pick dates within the trip and times that fit the day, leaving travel time and not overlapping existing events.',
     '- If the user is only chatting or asking a question, answer without calling the tool.',
@@ -187,3 +189,16 @@ export function validateGuideMessages(messages: unknown): GuideMessage[] | null 
   return out;
 }
 
+
+export const LOOKUP_PLACE_TOOL = {
+  name: 'lookup_place',
+  description:
+    'Look up a real place on Google Maps for live facts: opening hours, open-now status, closures, rating, price level. Query should be the place name plus its city, e.g. "Belvedere Palace Vienna".',
+  input_schema: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'Place name and city' },
+    },
+    required: ['query'],
+  },
+} as const;
