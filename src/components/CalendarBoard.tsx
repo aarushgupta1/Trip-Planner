@@ -262,7 +262,7 @@ function DayHeader({
             onChange={(e) => onNoteChange(e.target.value)}
             onBlur={(e) => { setEditing(false); onNoteCommit(e.target.value); }}
             rows={2}
-            placeholder="Scratchpad for this day…"
+            placeholder="Travelpad for this day…"
             className="w-full text-[9px] text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded px-1.5 py-1 outline-none resize-none leading-tight placeholder-gray-300 dark:placeholder-gray-600 shadow-sm"
           />
         ) : (
@@ -277,7 +277,7 @@ function DayHeader({
             {!readOnly && (
               <span className="flex items-center gap-1 text-gray-300 dark:text-gray-600 italic group-hover:text-gray-400 dark:group-hover:text-gray-500 transition-colors">
                 <Pencil size={8} />
-                Scratchpad
+                Travelpad
               </span>
             )}
           </button>
@@ -567,7 +567,7 @@ export default function CalendarBoard({
       try {
         await upsertDayNote(trip.id, date, text, getEditorName());
       } catch {
-        setToastMsg("Couldn't save your scratchpad — check your connection and try again.");
+        setToastMsg("Couldn't save your travelpad — check your connection and try again.");
       }
     });
   };
@@ -945,9 +945,9 @@ export default function CalendarBoard({
                 <button
                   onClick={() => setShowGuide((v) => !v)}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-blue-600/40 text-blue-600 hover:bg-blue-600/10 text-xs font-semibold transition-colors"
-                  title="Aero: ask questions and check your itinerary"
+                  title="Ask Aero: questions, ideas and an itinerary check"
                 >
-                  Aero
+                  Ask Aero
                   <Plane size={13} className="rotate-45" />
                 </button>
                 {/* Jump to today — only relevant while the trip is actually underway */}

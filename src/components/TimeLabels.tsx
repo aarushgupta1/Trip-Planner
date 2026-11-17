@@ -31,19 +31,21 @@ export default function TimeLabels({ widthPx = 64, hourly = null }: { widthPx?: 
           : '';
         return (
           <div key={hour} className="flex items-start pl-1.5 pr-2" style={{ height: PIXELS_PER_HOUR }}>
-            <div className={['flex w-full items-center', hourly ? '' : 'justify-end'].join(' ')} style={{ marginTop: -6 }}>
-              <span className="w-9 shrink-0 text-right text-[10px] font-medium leading-none text-gray-400 dark:text-gray-500">
-                {i !== 0 ? formatHour(hour) : ''}
-              </span>
+            {/* Weather sits to the left of the time; the time keeps its usual spot at the
+                right edge next to the grid. */}
+            <div className="flex w-full items-center justify-end" style={{ marginTop: -6 }}>
               {point && info && (
                 <span
-                  className="ml-1.5 flex items-center gap-0.5 whitespace-nowrap text-[10px] leading-none text-gray-700 dark:text-gray-200"
+                  className="mr-1.5 flex items-center gap-0.5 whitespace-nowrap text-[10px] leading-none text-gray-700 dark:text-gray-200"
                   title={`${formatHour(hour)}: ${info.label}, ${point.temp}°${rain}`}
                 >
                   <span className="text-[11px]">{info.icon}</span>
                   <span className="font-semibold tabular-nums">{point.temp}°</span>
                 </span>
               )}
+              <span className="w-9 shrink-0 text-right text-[10px] font-medium leading-none text-gray-400 dark:text-gray-500">
+                {i !== 0 ? formatHour(hour) : ''}
+              </span>
             </div>
           </div>
         );
