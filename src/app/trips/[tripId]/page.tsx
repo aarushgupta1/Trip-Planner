@@ -63,6 +63,8 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
           {user && (
             <ShareTripButton
               tripId={trip.id}
+              tripName={trip.name}
+              dateRange={formatDateRange(trip.start_date, trip.end_date)}
               isOwner={trip.is_owner}
               currentUserId={user.id}
               people={people}

@@ -3,11 +3,12 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { X, Plus, CalendarRange, Globe2, AlertTriangle, Check, Copy, UserPlus } from 'lucide-react';
+import { X, Plus, CalendarRange, Globe2, AlertTriangle, Check, Copy, Share2, UserPlus } from 'lucide-react';
 import CitySearch from './CitySearch';
 import { createTrip, createInvite, updateTrip, CitySuggestion } from '@/app/trips/actions';
 import { CityInput, TripInput, validateTripInput, MAX_CITIES } from '@/lib/tripInput';
-import { datesInRange, formatDateShort } from '@/lib/utils';
+import { datesInRange, formatDateRange, formatDateShort } from '@/lib/utils';
+import { canNativeShare, inviteMessage, shareInvite } from '@/lib/share';
 
 const inputClass =
   'w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-300 dark:placeholder-gray-600';
@@ -177,6 +178,17 @@ export default function TripForm({
     }
   };
 
+  const shareNow = async () => {
+    if (!created) return;
+    const outcome = await shareInvite({
+      title: name.trim(),
+      text: inviteMessage(name.trim(), startDate && endDate ? formatDateRange(startDate, endDate) : ''),
+      url: created.link,
+    });
+    if (outcome === 'unsupported') await copyLink();
+    else if (outcome === 'error') setError("Couldn't open sharing — use Copy instead.");
+  };
+
   if (created) {
     return (
       <div className="space-y-5">
@@ -187,6 +199,16 @@ export default function TripForm({
             hotels and notes. You can turn the link off any time from the trip’s Share button.
           </p>
         </div>
+        {canNativeShare() && (
+          <button
+            type="button"
+            onClick={shareNow}
+            className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors"
+          >
+            <Share2 size={15} />
+            Share invite
+          </button>
+        )}
         <div className="flex gap-2">
           <input
             readOnly

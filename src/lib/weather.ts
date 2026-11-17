@@ -337,7 +337,7 @@ export async function getHourlyWeather(city: TripCity, date: string): Promise<Ho
 export function weatherKindLabel(kind: WeatherKind): string {
   if (kind === 'forecast') return 'Forecast';
   if (kind === 'observed') return 'Recorded';
-  return 'Typical for this time of year (10-year average)';
+  return 'Historical average for this time of year (10-year average)';
 }
 
 // WMO weather interpretation codes: https://open-meteo.com/en/docs

@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Copy, Link2, UserMinus, X } from 'lucide-react';
-import { createInvite, removeMember, revokeInvite, type TripPerson } from '@/app/trips/actions';
+import { Check, Copy, Share2, UserMinus, X } from 'lucide-react';
+import { createInvite, removeMember, type TripPerson } from '@/app/trips/actions';
+import { canNativeShare, inviteMessage, shareInvite } from '@/lib/share';
 
 export default function ShareTripModal({
   tripId,
+  tripName,
+  dateRange,
   isOwner,
   currentUserId,
   people,
@@ -14,6 +17,8 @@ export default function ShareTripModal({
   onClose,
 }: {
   tripId: string;
+  tripName: string;
+  dateRange: string;
   isOwner: boolean;
   currentUserId: string;
   people: TripPerson[];
@@ -28,20 +33,27 @@ export default function ShareTripModal({
 
   const link = token && typeof window !== 'undefined' ? `${window.location.origin}/join/${token}` : '';
 
-  const generate = () =>
+  // The owner never has to "create" a link: if there isn't one yet, it's made
+  // the moment this opens, so it's ready to send.
+  useEffect(() => {
+    if (!isOwner || initialToken) return;
+    let live = true;
+    createInvite(tripId).then((result) => {
+      if (!live) return;
+      if ('error' in result) setError(result.error);
+      else setToken(result.token);
+    });
+    return () => {
+      live = false;
+    };
+  }, [isOwner, initialToken, tripId]);
+
+  const newLink = () =>
     startTransition(async () => {
       setError(null);
       const result = await createInvite(tripId);
       if ('error' in result) setError(result.error);
       else setToken(result.token);
-    });
-
-  const stop = () =>
-    startTransition(async () => {
-      setError(null);
-      const result = await revokeInvite(tripId);
-      if ('error' in result) setError(result.error);
-      else setToken(null);
     });
 
   const copy = async () => {
@@ -52,6 +64,12 @@ export default function ShareTripModal({
     } catch {
       setError('Copy failed — select the link and copy it manually.');
     }
+  };
+
+  const share = async () => {
+    const outcome = await shareInvite({ title: tripName, text: inviteMessage(tripName, dateRange), url: link });
+    if (outcome === 'unsupported') await copy();
+    else if (outcome === 'error') setError("Couldn't open sharing — use Copy link instead.");
   };
 
   const remove = (userId: string) =>
@@ -83,44 +101,51 @@ export default function ShareTripModal({
 
         {isOwner && (
           <section className="mb-5">
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-              Anyone with this link who signs in can view and edit events, hotels and notes. Only you can change trip settings or delete it.
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              Anyone you send this to can join, view and edit events, hotels and notes. Only you can change trip settings or delete the trip.
             </p>
             {token ? (
               <>
                 <div className="flex gap-2">
-                  <input
-                    readOnly
-                    value={link}
-                    onFocus={(e) => e.currentTarget.select()}
-                    className="min-w-0 flex-1 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-xs bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
-                  />
+                  {canNativeShare() && (
+                    <button
+                      onClick={share}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+                    >
+                      <Share2 size={15} />
+                      Share
+                    </button>
+                  )}
                   <button
                     onClick={copy}
-                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+                    className={[
+                      'inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors',
+                      canNativeShare()
+                        ? 'border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        : 'flex-1 bg-blue-600 hover:bg-blue-700 text-white',
+                    ].join(' ')}
                   >
-                    {copied ? <Check size={14} /> : <Copy size={14} />}
-                    {copied ? 'Copied' : 'Copy'}
+                    {copied ? <Check size={15} /> : <Copy size={15} />}
+                    {copied ? 'Copied' : 'Copy link'}
                   </button>
                 </div>
-                <div className="mt-2 flex gap-3 text-xs">
-                  <button disabled={isPending} onClick={generate} className="text-blue-600 dark:text-blue-400 font-semibold hover:underline disabled:opacity-50">
-                    New link (old one stops working)
-                  </button>
-                  <button disabled={isPending} onClick={stop} className="text-red-500 dark:text-red-400 font-semibold hover:underline disabled:opacity-50">
-                    Turn off link
-                  </button>
-                </div>
+                <input
+                  readOnly
+                  value={link}
+                  onFocus={(e) => e.currentTarget.select()}
+                  aria-label="Invite link"
+                  className="mt-2 w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-500 bg-gray-50 dark:bg-gray-800 dark:text-gray-300"
+                />
+                <button
+                  disabled={isPending}
+                  onClick={newLink}
+                  className="mt-2 text-xs font-semibold text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline disabled:opacity-50"
+                >
+                  Make a new link (the old one stops working)
+                </button>
               </>
             ) : (
-              <button
-                disabled={isPending}
-                onClick={generate}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold"
-              >
-                <Link2 size={14} />
-                Create invite link
-              </button>
+              <p className="text-sm text-gray-400 dark:text-gray-500">{error ? '' : 'Getting your link ready…'}</p>
             )}
           </section>
         )}

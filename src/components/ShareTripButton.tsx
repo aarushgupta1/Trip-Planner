@@ -7,6 +7,8 @@ import type { TripPerson } from '@/app/trips/actions';
 
 export default function ShareTripButton(props: {
   tripId: string;
+  tripName: string;
+  dateRange: string;
   isOwner: boolean;
   currentUserId: string;
   people: TripPerson[];

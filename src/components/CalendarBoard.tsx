@@ -64,7 +64,7 @@ function pageForDate(dates: string[], date: string, daysPerPage: number): number
 
 
 function hourlyKindShort(kind: DayWeather['kind']): string {
-  return kind === 'forecast' ? 'Forecast' : kind === 'observed' ? 'Recorded' : 'Typical';
+  return kind === 'forecast' ? 'Forecast' : kind === 'observed' ? 'Recorded' : 'Historical';
 }
 
 function DayHeader({
@@ -162,7 +162,7 @@ function DayHeader({
                       title={`${label} — ${city.name} (${weatherKindLabel(cityWeather.kind)})`}
                     >
                       <span>{icon}</span>
-                      {cityWeather.kind === 'typical' && <span aria-label="typical">~</span>}
+                      {cityWeather.kind === 'typical' && <span aria-label="historical average">~</span>}
                       <span className="font-medium">{cityWeather.high}°</span>
                       <span className="text-gray-300 dark:text-gray-600">/{cityWeather.low}°</span>
                     </div>

@@ -53,7 +53,7 @@ export function buildGuideContext(input: {
   for (const date of dates) {
     const cities = getCitiesForDate(trip.cities, date).map((c) => c.name).join(' + ') || 'unknown city';
     const w = (weather[date] ?? [])
-      .map((x) => `${weatherCodeInfo(x.code).label} ${x.high}°/${x.low}°F${x.kind === 'typical' ? ' (typical)' : ''}`)
+      .map((x) => `${weatherCodeInfo(x.code).label} ${x.high}°/${x.low}°F${x.kind === 'typical' ? ' (historical average)' : ''}`)
       .join(', ');
     lines.push(`## ${date} — ${cities}${w ? ` — ${w}` : ''}`);
     const stay = hotels.filter((h) => getHotelDates(h).includes(date)).map((h) => h.name);
