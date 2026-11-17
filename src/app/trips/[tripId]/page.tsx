@@ -73,7 +73,7 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
           )}
           {trip.is_owner && (
             <Link
-              href={`/trips/${trip.id}/edit`}
+              href={`/?edit=${trip.id}`}
               title="Edit trip settings: name, dates and cities"
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >

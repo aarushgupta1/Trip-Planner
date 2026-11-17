@@ -197,6 +197,15 @@ body {
   }
 }
 
+.ticket .ticket-paper.ticket-paper-editing {
+  display: block;
+  -webkit-mask: none;
+  mask: none;
+}
+.ticket-editing:hover {
+  transform: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ticket,
   .ticket:hover {

@@ -17,7 +17,8 @@ function tripStatus(start: string, end: string, today: string): { label: string;
   return { label: days === 1 ? 'Starts tomorrow' : `In ${days} days`, tone: 'soon' };
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ edit?: string }> }) {
+  const { edit } = await searchParams;
   const configured = isSupabaseConfigured();
   const user = await getCurrentUser();
   const trips = configured && user ? await getTrips() : [];
@@ -43,6 +44,24 @@ export default async function DashboardPage() {
       passengers={t.people.map((p) => p.display_name)}
       number={t.ticket_no}
       tripType={t.trip_type}
+      startEditing={t.is_owner && edit === t.id}
+      initial={{
+        name: t.name,
+        start_date: t.start_date,
+        end_date: t.end_date,
+        home_timezone: t.home_timezone,
+        trip_type: t.trip_type,
+        cities: t.cities.map((c) => ({
+          name: c.name,
+          country: c.country,
+          country_code: c.country_code,
+          lat: c.lat,
+          lng: c.lng,
+          timezone: c.timezone,
+          start_date: c.start_date,
+          end_date: c.end_date,
+        })),
+      }}
     />
   );
 

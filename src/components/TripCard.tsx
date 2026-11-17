@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Pencil, Trash2 } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
+import TripForm from './TripForm';
+import type { TripInput } from '@/lib/tripInput';
 import { deleteTrip } from '@/app/trips/actions';
 import { TripType, TRIP_TYPE_LABELS } from '@/lib/utils';
 import { barcodeBars, cityCode, formatPassengers } from '@/lib/ticket';
@@ -41,6 +43,8 @@ export default function TripCard({
   passengers,
   number,
   tripType,
+  initial,
+  startEditing = false,
 }: {
   id: string;
   name: string;
@@ -52,9 +56,12 @@ export default function TripCard({
   isOwner: boolean;
   passengers: string[]; // everyone on the trip, owner first
   tripType: TripType;
+  initial: TripInput; // current settings, for editing in place
+  startEditing?: boolean;
   number: number; // 1 for your first trip, 2 for the next, and so on
 }) {
   const router = useRouter();
+  const [editing, setEditing] = useState(startEditing);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -82,6 +89,17 @@ export default function TripCard({
   // Red marks what's coming up; finished trips go quiet, and a trip that's
   // underway takes the blue.
   const statusColor = past ? 'var(--muted)' : status.tone === 'live' ? 'var(--accent)' : 'var(--red)';
+
+  if (editing) {
+    return (
+      <div className={['ticket ticket-editing', `ticket-${tripType}`].join(' ')}>
+        <div className="ticket-paper ticket-paper-editing px-5 py-5 sm:px-6">
+          <div className="mb-4 font-mono text-[11px] tracking-[0.08em] text-[var(--accent)]">TRIP {number} · EDIT SETTINGS</div>
+          <TripForm mode="edit" tripId={id} initial={initial} onCancel={() => setEditing(false)} onSaved={() => setEditing(false)} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={['ticket', `ticket-${tripType}`, isPending ? 'opacity-50 pointer-events-none' : ''].join(' ')}>
@@ -171,14 +189,14 @@ export default function TripCard({
 
           {isOwner && (
             <div className="pointer-events-auto relative z-10 flex items-center gap-0.5 sm:absolute sm:bottom-1 sm:right-1">
-              <Link
-                href={`/trips/${id}/edit`}
-                title="Edit trip: name, dates and cities"
+              <button
+                onClick={() => setEditing(true)}
+                title="Edit trip: name, type, dates and cities"
                 className="inline-flex items-center gap-1 px-1.5 py-1 rounded text-[11px] font-medium text-[var(--muted)] hover:text-[var(--accent)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
               >
                 <Pencil size={13} />
                 Edit
-              </Link>
+              </button>
               <button
                 onClick={() => setConfirming(true)}
                 title="Delete trip"

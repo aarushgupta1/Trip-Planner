@@ -47,10 +47,15 @@ export default function TripForm({
   mode,
   tripId,
   initial,
+  onCancel,
+  onSaved,
 }: {
   mode: 'create' | 'edit';
   tripId?: string;
   initial?: TripInput;
+  // Edit in place (e.g. on a ticket): close instead of navigating away.
+  onCancel?: () => void;
+  onSaved?: () => void;
 }) {
   const router = useRouter();
   const [name, setName] = useState(initial?.name ?? '');
@@ -165,6 +170,11 @@ export default function TripForm({
           setCreated({ id, link: `${window.location.origin}/join/${invite.token}` });
           return;
         }
+      }
+      if (mode === 'edit' && onSaved) {
+        onSaved();
+        router.refresh();
+        return;
       }
       router.push(`/trips/${id}`);
       router.refresh();
@@ -464,12 +474,22 @@ export default function TripForm({
       {error && <p className="text-xs text-red-500 dark:text-red-400 font-medium">{error}</p>}
 
       <div className="flex gap-3">
-        <Link
-          href={backHref}
-          className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl text-sm font-medium text-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        >
-          Cancel
-        </Link>
+        {onCancel ? (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl text-sm font-medium text-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            Cancel
+          </button>
+        ) : (
+          <Link
+            href={backHref}
+            className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl text-sm font-medium text-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            Cancel
+          </Link>
+        )}
         <button
           type="submit"
           disabled={isPending}
