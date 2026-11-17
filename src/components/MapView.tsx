@@ -99,7 +99,7 @@ export default function MapView({ attractions, hotels, initialDate, onClose }: M
       L.marker([a.lat!, a.lng!], {
         icon: L.divIcon({
           className: '',
-          html: `<div style="background:#2563eb;color:white;width:26px;height:26px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,0.4);border:2px solid white;">${i + 1}</div>`,
+          html: `<div style="background:#1f4fd8;color:white;width:26px;height:26px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,0.4);border:2px solid white;">${i + 1}</div>`,
           iconSize: [26, 26],
           iconAnchor: [13, 13],
         }),
@@ -114,7 +114,7 @@ export default function MapView({ attractions, hotels, initialDate, onClose }: M
     });
 
     if (points.length > 1) {
-      L.polyline(points, { color: '#2563eb', weight: 3, opacity: 0.6, dashArray: '6 6' }).addTo(layer);
+      L.polyline(points, { color: '#1f4fd8', weight: 3, opacity: 0.6, dashArray: '6 6' }).addTo(layer);
     }
 
     if (points.length > 0) {

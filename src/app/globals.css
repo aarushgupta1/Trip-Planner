@@ -3,26 +3,73 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6f7f9;
+  --foreground: #12161f;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+/* Design system: crisp neutrals, one clear blue, and a signal red used
+   sparingly. Redefining Tailwind's own blue / gray / red ramps (and the
+   corner radii) here restyles every existing utility class at once. */
+@theme {
+  --color-gray-50: #f6f7f9;
+  --color-gray-100: #eef0f4;
+  --color-gray-200: #dfe3ea;
+  --color-gray-300: #c9cfd9;
+  --color-gray-400: #98a2b3;
+  --color-gray-500: #667085;
+  --color-gray-600: #475467;
+  --color-gray-700: #344054;
+  --color-gray-800: #1d2433;
+  --color-gray-900: #12161f;
+  --color-gray-950: #0b0e14;
+
+  --color-blue-50: #eef3fe;
+  --color-blue-100: #dce6fd;
+  --color-blue-200: #bccffb;
+  --color-blue-300: #92b0f7;
+  --color-blue-400: #5f87ee;
+  --color-blue-500: #3a66e3;
+  --color-blue-600: #1f4fd8;
+  --color-blue-700: #1a41b3;
+  --color-blue-800: #17368f;
+  --color-blue-900: #152e73;
+  --color-blue-950: #0d1b45;
+
+  --color-red-50: #fef3f2;
+  --color-red-100: #fee4e2;
+  --color-red-200: #fecdca;
+  --color-red-300: #fda29b;
+  --color-red-400: #f97066;
+  --color-red-500: #f04438;
+  --color-red-600: #d92d20;
+  --color-red-700: #b42318;
+  --color-red-800: #912018;
+  --color-red-900: #7a271a;
+  --color-red-950: #55160c;
+
+  --radius-md: 0.25rem;
+  --radius-lg: 0.3125rem;
+  --radius-xl: 0.375rem;
+  --radius-2xl: 0.5rem;
+  --radius-3xl: 0.75rem;
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #0b0e14;
+  --foreground: #eef1f6;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), system-ui, sans-serif;
 }
 
 @media print {
@@ -47,47 +94,48 @@ body {
 /* ---- Trip tickets (dashboard) ---------------------------------------- */
 
 .ticket {
-  --paper: #fbf7f0;
-  --ink: #2b2520;
-  --muted: #8a7f72;
-  --rule: #d9cfbf;
-  --notch: 9px;
-  --stub-h: 92px; /* stacked layout: stub height */
-  --stub-w: 152px; /* side-by-side layout: stub width */
+  --paper: #ffffff;
+  --ink: #12161f;
+  --muted: #667085;
+  --rule: #dfe3ea;
+  --stub: #f1f4fb;
+  --blue: #1f4fd8;
+  --red: #d92d20;
+  --notch: 7px;
+  --stub-h: 84px; /* stacked layout: stub height */
+  --stub-w: 108px; /* side-by-side layout: stub width */
   position: relative;
-  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.28s;
-  /* The shadow follows the notched outline because it's applied outside the mask. */
-  filter: drop-shadow(0 1px 1px rgb(70 45 20 / 0.12)) drop-shadow(0 10px 14px rgb(70 45 20 / 0.12));
+  transition: transform 0.2s ease, filter 0.2s ease;
+  filter: drop-shadow(0 1px 2px rgb(16 24 40 / 0.1));
 }
 .dark .ticket {
-  --paper: #2a2521;
-  --ink: #f1eae0;
-  --muted: #9c9084;
-  --rule: #4a423a;
-  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.4)) drop-shadow(0 10px 14px rgb(0 0 0 / 0.3));
+  --paper: #171c28;
+  --ink: #eef1f6;
+  --muted: #98a2b3;
+  --rule: #2a3243;
+  --stub: #1c2438;
+  --blue: #7b9cf5;
+  --red: #f97066;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5));
 }
 .ticket:hover {
-  transform: translateY(-3px) rotate(-0.4deg);
-  filter: drop-shadow(0 1px 1px rgb(70 45 20 / 0.14)) drop-shadow(0 16px 18px rgb(70 45 20 / 0.16));
-}
-.ticket:nth-child(even):hover {
-  transform: translateY(-3px) rotate(0.4deg);
+  transform: translateY(-2px);
+  filter: drop-shadow(0 6px 10px rgb(16 24 40 / 0.14));
 }
 .ticket:focus-within {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--blue);
   outline-offset: 3px;
-  border-radius: 16px;
+  border-radius: 8px;
 }
 
 .ticket-paper {
   position: relative;
   display: grid;
   grid-template-rows: 1fr var(--stub-h);
-  border-radius: 14px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
   color: var(--ink);
-  background-color: var(--paper);
-  /* a whisper of paper grain */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .3 0 0 0 0 .2 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+  background: var(--paper);
   /* punched notches where the stub tears off */
   -webkit-mask:
     radial-gradient(circle var(--notch) at 0 calc(100% - var(--stub-h)), #0000 97%, #000) left / 51% 100% no-repeat,
@@ -99,9 +147,30 @@ body {
 
 .ticket-stub {
   position: relative;
-  border-top: 2px dashed var(--rule);
-  background: color-mix(in srgb, var(--accent) 11%, transparent);
+  border-top: 1px dashed var(--rule);
+  background: var(--stub);
 }
+
+.ticket-route {
+  position: relative;
+  height: 7px;
+  margin-top: 10px;
+  border-top: 1px solid var(--blue);
+}
+.ticket-route::before,
+.ticket-route::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  width: 7px;
+  height: 7px;
+  box-sizing: border-box;
+  border: 1px solid var(--blue);
+  border-radius: 50%;
+  background: var(--paper);
+}
+.ticket-route::before { left: -4px; }
+.ticket-route::after { right: -4px; }
 
 @media (min-width: 640px) {
   .ticket-paper {
@@ -116,12 +185,8 @@ body {
   }
   .ticket-stub {
     border-top: 0;
-    border-left: 2px dashed var(--rule);
+    border-left: 1px dashed var(--rule);
   }
-}
-
-.ticket-serif {
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
 }
 
 @media (prefers-reduced-motion: reduce) {

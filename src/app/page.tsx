@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { Plus, MapPin, AlertTriangle, Plane } from 'lucide-react';
+import { Plus, AlertTriangle, Plane } from 'lucide-react';
+import BrandMark from '@/components/BrandMark';
 import { getTrips } from '@/app/trips/actions';
 import { getCurrentUser, isSupabaseConfigured } from '@/lib/supabase/server';
 import { generateTripDates, getCityOrder } from '@/lib/trip';
@@ -43,13 +44,11 @@ export default async function DashboardPage() {
   );
 
   return (
-    <main className="min-h-dvh bg-[#f4efe6] dark:bg-[#171512]">
+    <main className="min-h-dvh bg-gray-50 dark:bg-gray-950">
       <header className="h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 sm:px-6 shadow-sm">
         <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-            <MapPin size={16} />
-          </span>
-          <span className="font-bold text-gray-900 dark:text-gray-100">Trip Planner</span>
+          <BrandMark />
+          <span className="font-semibold tracking-tight text-gray-900 dark:text-gray-100">Trip Planner</span>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -70,7 +69,7 @@ export default async function DashboardPage() {
 
         <div className="flex items-end justify-between gap-3 mb-6">
           <div>
-            <h1 className="ticket-serif text-3xl font-medium text-gray-900 dark:text-gray-100">
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
               {displayName ? `Hi ${displayName.split(' ')[0]}` : 'My trips'}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">

@@ -91,11 +91,11 @@ function DayHeader({
     <div
       className={[
         'flex-1 border-l border-gray-100 dark:border-gray-800 first:border-l-0 flex flex-col',
-        isToday ? 'bg-blue-50/60 dark:bg-blue-950/30' : '',
+        isToday ? 'bg-blue-50/60 dark:bg-blue-950/30 border-t-2 border-t-red-600 dark:border-t-red-500' : '',
       ].join(' ')}
     >
       <div className="text-center pt-2 pb-1 px-1">
-        <div className={['text-[10px] font-bold uppercase tracking-wider', isToday ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'].join(' ')}>
+        <div className={['text-[10px] font-bold uppercase tracking-wider', isToday ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'].join(' ')}>
           {isToday ? 'Today' : weekday}
         </div>
         <div className={['text-sm font-bold leading-snug', isToday ? 'text-blue-700 dark:text-blue-300' : 'text-gray-800 dark:text-gray-200'].join(' ')}>
@@ -850,7 +850,7 @@ export default function CalendarBoard({
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setShowGuide((v) => !v)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#c8553d]/40 text-[#c8553d] hover:bg-[#c8553d]/10 text-xs font-semibold transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-blue-600/40 text-blue-600 hover:bg-blue-600/10 text-xs font-semibold transition-colors"
                   title="Trip guide: ask questions and check your itinerary"
                 >
                   <Sparkles size={13} />

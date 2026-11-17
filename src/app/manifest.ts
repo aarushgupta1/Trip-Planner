@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Plan a trip to anywhere — day-by-day itinerary, hotels, maps and weather.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#ffffff',
-    theme_color: '#2563eb',
+    background_color: '#f6f7f9',
+    theme_color: '#1f4fd8',
     icons: [
       { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml' },
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },

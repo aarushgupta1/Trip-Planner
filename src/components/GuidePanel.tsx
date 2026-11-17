@@ -86,7 +86,7 @@ export default function GuidePanel({
     >
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
         <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#c8553d] text-white">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white">
             <Sparkles size={14} />
           </span>
           <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Trip guide</h2>
@@ -104,7 +104,7 @@ export default function GuidePanel({
             className={[
               '-mb-px border-b-2 px-3 py-1.5 text-xs font-semibold transition-colors',
               tab === t
-                ? 'border-[#c8553d] text-gray-900 dark:text-gray-100'
+                ? 'border-blue-600 text-gray-900 dark:text-gray-100'
                 : 'border-transparent text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
             ].join(' ')}
           >
@@ -140,7 +140,7 @@ export default function GuidePanel({
                       key={s}
                       disabled={!chatEnabled}
                       onClick={() => send(s)}
-                      className="rounded-full border border-gray-200 px-3 py-1.5 text-left text-xs text-gray-600 transition-colors hover:border-[#c8553d] hover:text-[#c8553d] disabled:opacity-40 dark:border-gray-700 dark:text-gray-300"
+                      className="rounded-full border border-gray-200 px-3 py-1.5 text-left text-xs text-gray-600 transition-colors hover:border-blue-600 hover:text-blue-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300"
                     >
                       {s}
                     </button>
@@ -155,7 +155,7 @@ export default function GuidePanel({
                   className={[
                     'max-w-[92%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed',
                     t.role === 'user'
-                      ? 'bg-[#c8553d] text-white'
+                      ? 'bg-blue-600 text-white'
                       : t.failed
                         ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
                         : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100',
@@ -221,13 +221,13 @@ export default function GuidePanel({
               maxLength={2000}
               disabled={!chatEnabled}
               placeholder={chatEnabled ? 'Ask about a day, a place, a plan…' : 'Chat is off'}
-              className="max-h-28 min-h-[40px] flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c8553d] disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              className="max-h-28 min-h-[40px] flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             />
             <button
               type="submit"
               disabled={!chatEnabled || isPending || !input.trim()}
               aria-label="Send"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#c8553d] text-white hover:bg-[#b34a34] disabled:opacity-40"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40"
             >
               <Send size={16} />
             </button>
@@ -262,7 +262,7 @@ export default function GuidePanel({
               {chatEnabled && warnCount > 0 && (
                 <button
                   onClick={() => send(fixPrompt)}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#c8553d] px-3.5 py-2 text-sm font-semibold text-white hover:bg-[#b34a34]"
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                 >
                   <Sparkles size={14} />
                   Ask the guide how to fix these
