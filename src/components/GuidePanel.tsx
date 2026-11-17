@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
-import { AlertTriangle, CalendarPlus, Info, Send, Sparkles, X } from 'lucide-react';
+import { AlertTriangle, CalendarPlus, Info, Send, Plane, X } from 'lucide-react';
 import { askGuide } from '@/app/guide/actions';
 import { Attraction, Hotel } from '@/lib/types';
 import { GuideMessage, GuideSuggestion } from '@/lib/guide';
@@ -88,7 +88,7 @@ export default function GuidePanel({
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
         <div className="flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white">
-            <Sparkles size={14} />
+            <Plane size={14} className="-rotate-45" />
           </span>
           <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Aero</h2>
         </div>
@@ -270,7 +270,7 @@ export default function GuidePanel({
                   onClick={() => send(fixPrompt)}
                   className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                 >
-                  <Sparkles size={14} />
+                  <Plane size={14} className="-rotate-45" />
                   Ask Aero how to fix these
                 </button>
               )}

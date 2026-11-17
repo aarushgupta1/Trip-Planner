@@ -50,7 +50,7 @@ import SearchJumpBox from './SearchJumpBox';
 import NotificationsMenu from './NotificationsMenu';
 import HourlyWeatherModal from './HourlyWeatherModal';
 import TimeLabels from './TimeLabels';
-import { ChevronLeft, ChevronRight, Pencil, PanelLeftOpen, WifiOff, CalendarDays, Search, ArrowRight, Sparkles, Clock, Map as MapIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, PanelLeftOpen, WifiOff, CalendarDays, Search, ArrowRight, Plane, Clock, Map as MapIcon } from 'lucide-react';
 
 // Leaflet touches `window`/`document` at import time, so it can only ever
 // load on the client — ssr: false keeps it (and its CSS) out of the server
@@ -861,7 +861,7 @@ export default function CalendarBoard({
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-blue-600/40 text-blue-600 hover:bg-blue-600/10 text-xs font-semibold transition-colors"
                   title="Aero: ask questions and check your itinerary"
                 >
-                  <Sparkles size={13} />
+                  <Plane size={13} className="-rotate-45" />
                   <span className="hidden sm:inline">Aero</span>
                 </button>
                 {/* Jump to today — only relevant while the trip is actually underway */}
