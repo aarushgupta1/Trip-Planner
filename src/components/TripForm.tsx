@@ -3,9 +3,9 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { X, Plus, CalendarRange, Globe2, AlertTriangle } from 'lucide-react';
+import { X, Plus, CalendarRange, Globe2, AlertTriangle, Check, Copy, UserPlus } from 'lucide-react';
 import CitySearch from './CitySearch';
-import { createTrip, updateTrip, CitySuggestion } from '@/app/trips/actions';
+import { createTrip, createInvite, updateTrip, CitySuggestion } from '@/app/trips/actions';
 import { CityInput, TripInput, validateTripInput, MAX_CITIES } from '@/lib/tripInput';
 import { datesInRange, formatDateShort } from '@/lib/utils';
 
@@ -64,6 +64,10 @@ export default function TripForm({
   const [datesEdited, setDatesEdited] = useState(mode === 'edit');
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Create mode only: make an invite link as the trip is created.
+  const [shareAfter, setShareAfter] = useState(false);
+  const [created, setCreated] = useState<{ id: string; link: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const timeZones = useMemo(() => {
     const fn = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf;
@@ -148,10 +152,71 @@ export default function TripForm({
         return;
       }
       const id = mode === 'create' ? (result as { id: string }).id : tripId!;
+      if (mode === 'create' && shareAfter) {
+        const invite = await createInvite(id);
+        // If the link can't be made, the trip still exists — carry on to it;
+        // sharing is available from the trip page.
+        if (!('error' in invite)) {
+          setCreated({ id, link: `${window.location.origin}/join/${invite.token}` });
+          return;
+        }
+      }
       router.push(`/trips/${id}`);
       router.refresh();
     });
   };
+
+  const copyLink = async () => {
+    if (!created) return;
+    try {
+      await navigator.clipboard.writeText(created.link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setError('Copy failed — select the link and copy it manually.');
+    }
+  };
+
+  if (created) {
+    return (
+      <div className="space-y-5">
+        <div>
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Your trip is ready</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Send this link to anyone you want to plan with. They’ll sign in (or sign up) and join, and can edit events,
+            hotels and notes. You can turn the link off any time from the trip’s Share button.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <input
+            readOnly
+            value={created.link}
+            onFocus={(e) => e.currentTarget.select()}
+            className="min-w-0 flex-1 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-xs bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
+          />
+          <button
+            type="button"
+            onClick={copyLink}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+        {error && <p className="text-xs text-red-500 dark:text-red-400 font-medium">{error}</p>}
+        <button
+          type="button"
+          onClick={() => {
+            router.push(`/trips/${created.id}`);
+            router.refresh();
+          }}
+          className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors"
+        >
+          Open trip
+        </button>
+      </div>
+    );
+  }
 
   const backHref = mode === 'edit' && tripId ? `/trips/${tripId}` : '/';
 
@@ -300,6 +365,26 @@ export default function TripForm({
           Lets flights show departure and arrival times in your home time as well as local time.
         </p>
       </div>
+
+      {mode === 'create' && (
+        <label className="flex items-start gap-2.5 rounded-xl border border-gray-200 dark:border-gray-700 px-3.5 py-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={shareAfter}
+            onChange={(e) => setShareAfter(e.target.checked)}
+            className="mt-0.5 h-4 w-4"
+          />
+          <span className="text-sm">
+            <span className="flex items-center gap-1.5 font-medium text-gray-800 dark:text-gray-100">
+              <UserPlus size={14} />
+              Plan this trip with others
+            </span>
+            <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
+              Get an invite link as soon as the trip is created. You can also do this later.
+            </span>
+          </span>
+        </label>
+      )}
 
       {mode === 'edit' && (
         <div className="flex items-start gap-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3.5 py-2.5 text-xs text-amber-800 dark:text-amber-300">
