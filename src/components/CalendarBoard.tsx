@@ -143,7 +143,7 @@ function DayHeader({
                 key={hotel.id}
                 onClick={() => onHotelClick(hotel)}
                 title={`${hotel.name} — tap to view`}
-                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/60 transition-colors max-w-full"
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors max-w-full"
               >
                 <span className="shrink-0">🏨</span>
                 <span className="truncate">{hotel.name}</span>
@@ -241,7 +241,7 @@ export default function CalendarBoard({
   const [showSearch, setShowSearch] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
-  // An event the trip guide suggested, opened in the normal add-event form for review.
+  // An event Aero suggested, opened in the normal add-event form for review.
   const [guideSuggestion, setGuideSuggestion] = useState<GuideSuggestion | null>(null);
   const [colWidth, setColWidth] = useState(200);
   // Doubles as both the drag/resize conflict notice and a generic error toast
@@ -851,10 +851,10 @@ export default function CalendarBoard({
                 <button
                   onClick={() => setShowGuide((v) => !v)}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-blue-600/40 text-blue-600 hover:bg-blue-600/10 text-xs font-semibold transition-colors"
-                  title="Trip guide: ask questions and check your itinerary"
+                  title="Aero: ask questions and check your itinerary"
                 >
                   <Sparkles size={13} />
-                  <span className="hidden sm:inline">Guide</span>
+                  <span className="hidden sm:inline">Aero</span>
                 </button>
                 {/* Add event — opens the same modal a grid click would, just without
                     a slot pre-picked (defaults to today/untimed, editable inside) */}

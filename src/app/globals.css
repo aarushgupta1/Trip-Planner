@@ -196,3 +196,53 @@ body {
     transform: none;
   }
 }
+
+/* ---- Small global touches of the palette ---------------------------- */
+
+/* A thin brand rule across the very top of every page: blue, with a short red
+   lead-in. Fixed and non-interactive, so it never affects layout. */
+.brand-rule {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 70;
+  height: 3px;
+  background: var(--color-blue-600);
+  pointer-events: none;
+}
+.brand-rule::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 56px;
+  background: var(--color-red-600);
+}
+.dark .brand-rule { background: var(--color-blue-500); }
+.dark .brand-rule::before { background: var(--color-red-500); }
+
+::selection {
+  background: var(--color-blue-200);
+  color: var(--color-gray-900);
+}
+.dark ::selection {
+  background: var(--color-blue-800);
+  color: #fff;
+}
+
+/* Native checkboxes, radios, sliders and the text caret pick up the blue. */
+input,
+select,
+textarea {
+  accent-color: var(--color-blue-600);
+  caret-color: var(--color-blue-600);
+}
+
+:focus-visible {
+  outline-color: var(--color-blue-600);
+}
+
+* {
+  scrollbar-color: var(--color-gray-300) transparent;
+}
+.dark * {
+  scrollbar-color: var(--color-gray-700) transparent;
+}

@@ -73,7 +73,7 @@ export default function ShareTripModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-5 max-h-[90dvh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border-t-2 border-t-blue-600 shadow-2xl w-full max-w-md p-5 max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">{isOwner ? 'Share this trip' : 'People on this trip'}</h2>
           <button onClick={onClose} className="p-1 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" aria-label="Close">

@@ -38,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="h-full" suppressHydrationWarning>
       <body className={`${inter.variable} ${plexMono.variable} h-full antialiased`} suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <div className="brand-rule" aria-hidden />
         {children}
         <ServiceWorkerRegistration />
       </body>

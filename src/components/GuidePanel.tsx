@@ -81,17 +81,17 @@ export default function GuidePanel({
 
   return (
     <aside
-      className="fixed right-0 top-14 bottom-0 z-40 flex w-full flex-col border-l border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 sm:w-[400px]"
-      aria-label="Trip guide"
+      className="fixed right-0 top-14 bottom-0 z-40 flex w-full flex-col border-l border-t-2 border-gray-200 border-t-blue-600 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 sm:w-[400px]"
+      aria-label="Aero"
     >
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
         <div className="flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white">
             <Sparkles size={14} />
           </span>
-          <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Trip guide</h2>
+          <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Aero</h2>
         </div>
-        <button onClick={onClose} aria-label="Close guide" className="rounded-lg p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+        <button onClick={onClose} aria-label="Close Aero" className="rounded-lg p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
           <X size={18} />
         </button>
       </div>
@@ -124,14 +124,14 @@ export default function GuidePanel({
             {turns.length === 0 && (
               <div>
                 <p className="font-serif text-lg leading-snug text-gray-900 dark:text-gray-100">
-                  Ask me anything about this trip.
+                  Ask Aero anything about this trip.
                 </p>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   I can see your days, hotels and weather, so my ideas fit what you’ve already planned. Double-check opening hours before you go.
                 </p>
                 {!chatEnabled && (
                   <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                    Chat isn’t switched on for this app yet. The itinerary check still works.
+                    Aero’s chat isn’t switched on for this app yet. The itinerary check still works.
                   </p>
                 )}
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -192,7 +192,7 @@ export default function GuidePanel({
             ))}
 
             {isPending && (
-              <div className="inline-flex gap-1 rounded-2xl bg-gray-100 px-3.5 py-3 dark:bg-gray-800" aria-label="Guide is thinking">
+              <div className="inline-flex gap-1 rounded-2xl bg-gray-100 px-3.5 py-3 dark:bg-gray-800" aria-label="Aero is thinking">
                 {[0, 1, 2].map((d) => (
                   <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: `${d * 120}ms` }} />
                 ))}
@@ -265,7 +265,7 @@ export default function GuidePanel({
                   className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                 >
                   <Sparkles size={14} />
-                  Ask the guide how to fix these
+                  Ask Aero how to fix these
                 </button>
               )}
             </>

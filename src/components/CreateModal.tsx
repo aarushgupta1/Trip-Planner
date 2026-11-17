@@ -24,7 +24,7 @@ interface CreateModalProps {
   // the event untimed until the user picks a time themselves.
   date?: string;
   startTime?: string;
-  // Pre-filled fields, e.g. when adding something the trip guide suggested.
+  // Pre-filled fields, e.g. when adding something Aero suggested.
   prefill?: Partial<{
     name: string;
     description: string;
@@ -157,7 +157,7 @@ export default function CreateModal({ date, startTime, prefill, allAttractions, 
       onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-900 rounded-2xl border-t-2 border-t-blue-600 shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -332,9 +332,9 @@ export default function CreateModal({ date, startTime, prefill, allAttractions, 
                 return (
                   <div
                     key={hotel.id}
-                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-900 text-[11px]"
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 text-[11px]"
                   >
-                    <span className="flex items-center gap-1.5 text-violet-700 dark:text-violet-300 min-w-0">
+                    <span className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300 min-w-0">
                       <BedDouble size={12} className="shrink-0" />
                       <span className="truncate">From {hotel.name}</span>
                     </span>
@@ -343,7 +343,7 @@ export default function CreateModal({ date, startTime, prefill, allAttractions, 
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="shrink-0 font-semibold text-violet-600 dark:text-violet-400 hover:underline"
+                      className="shrink-0 font-semibold text-blue-600 dark:text-blue-400 hover:underline"
                     >
                       Directions
                     </a>

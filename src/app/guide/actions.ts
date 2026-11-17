@@ -32,7 +32,7 @@ export async function isGuideEnabled(): Promise<boolean> {
 // server.
 export async function askGuide(tripId: string, rawMessages: GuideMessage[]): Promise<GuideResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return { error: 'The guide isn’t set up yet (missing ANTHROPIC_API_KEY on the server).' };
+  if (!apiKey) return { error: 'Aero isn’t set up yet (missing ANTHROPIC_API_KEY on the server).' };
 
   const messages = validateGuideMessages(rawMessages);
   if (!messages) return { error: 'Something was off with that message — try again.' };
@@ -43,8 +43,8 @@ export async function askGuide(tripId: string, rawMessages: GuideMessage[]): Pro
   const supabase = await createSupabaseServer();
   const limit = Number(process.env.GUIDE_DAILY_LIMIT) || DEFAULT_DAILY_LIMIT;
   const { data: allowed, error: limitError } = await supabase.rpc('bump_guide_usage', { p_limit: limit });
-  if (limitError) return { error: 'The guide is unavailable right now.' };
-  if (!allowed) return { error: `You've reached today's limit of ${limit} guide questions. It resets tomorrow (UTC).` };
+  if (limitError) return { error: 'Aero is unavailable right now.' };
+  if (!allowed) return { error: `You've reached today's limit of ${limit} questions to Aero. It resets tomorrow (UTC).` };
 
   const dates = generateTripDates(trip);
   const [attractions, hotels, dayNotes, weather] = await Promise.all([
@@ -71,13 +71,13 @@ export async function askGuide(tripId: string, rawMessages: GuideMessage[]): Pro
       signal: AbortSignal.timeout(45_000),
     });
   } catch {
-    return { error: "Couldn't reach the guide — check your connection and try again." };
+    return { error: "Couldn't reach Aero — check your connection and try again." };
   }
 
   if (!res.ok) {
     // Details stay in the server log; the user gets a plain message.
-    console.error('Guide request failed', res.status, await res.text().catch(() => ''));
-    return { error: res.status === 429 ? 'The guide is busy right now — try again in a moment.' : 'The guide ran into a problem. Try again.' };
+    console.error('Aero request failed', res.status, await res.text().catch(() => ''));
+    return { error: res.status === 429 ? 'Aero is busy right now — try again in a moment.' : 'Aero ran into a problem. Try again.' };
   }
 
   const data = (await res.json()) as { content?: { type: string; text?: string; name?: string; input?: unknown }[] };
@@ -91,6 +91,6 @@ export async function askGuide(tripId: string, rawMessages: GuideMessage[]): Pro
     .filter((b) => b.type === 'tool_use' && b.name === SUGGEST_EVENTS_TOOL.name)
     .flatMap((b) => parseSuggestions(b.input, dates));
 
-  if (!reply && suggestions.length === 0) return { error: 'The guide had nothing to add — try rephrasing.' };
+  if (!reply && suggestions.length === 0) return { error: 'Aero had nothing to add — try rephrasing.' };
   return { reply: reply || 'Here are some ideas:', suggestions };
 }

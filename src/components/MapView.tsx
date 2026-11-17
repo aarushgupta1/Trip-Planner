@@ -85,7 +85,7 @@ export default function MapView({ attractions, hotels, initialDate, onClose }: M
       L.marker([hotel.lat, hotel.lng], {
         icon: L.divIcon({
           className: '',
-          html: '<div style="background:#7c3aed;color:white;width:28px;height:28px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 1px 4px rgba(0,0,0,0.4);border:2px solid white;">🏨</div>',
+          html: '<div style="background:#17368f;color:white;width:28px;height:28px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 1px 4px rgba(0,0,0,0.4);border:2px solid white;">🏨</div>',
           iconSize: [28, 28],
           iconAnchor: [14, 14],
         }),

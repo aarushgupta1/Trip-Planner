@@ -104,10 +104,18 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {current.length > 0 && <div className="grid gap-6">{current.map(renderCard)}</div>}
+            {current.length > 0 && (
+              <section>
+                <h2 className="mb-3 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-blue-600 dark:text-blue-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-600 dark:bg-red-500" />
+                  Upcoming
+                </h2>
+                <div className="grid gap-6">{current.map(renderCard)}</div>
+              </section>
+            )}
             {past.length > 0 && (
               <section>
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-3">Past trips</h2>
+                <h2 className="mb-3 font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">Past trips</h2>
                 <div className="grid gap-6">{past.map(renderCard)}</div>
               </section>
             )}

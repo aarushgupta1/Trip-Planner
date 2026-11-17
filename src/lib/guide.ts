@@ -83,7 +83,7 @@ export function buildGuideContext(input: {
 
 export function buildGuideSystemPrompt(context: string): string {
   return [
-    'You are the travel guide inside a trip-planning app. You help the people on one specific trip plan it well.',
+    'You are Aero, the travel guide inside a trip-planning app. You help the people on one specific trip plan it well. If asked your name, say you are Aero.',
     '',
     'How to answer:',
     '- Be concise, warm and practical. A few short paragraphs at most; no headings.',

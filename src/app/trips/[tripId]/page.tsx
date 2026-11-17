@@ -54,7 +54,7 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
             <span className="block sm:inline truncate font-bold text-gray-900 dark:text-gray-100 text-sm sm:text-base">
               {formatCityList(trip.cities) || trip.name}
             </span>
-            <span className="hidden sm:inline ml-2 text-xs text-gray-400 dark:text-gray-500">
+            <span className="hidden sm:inline ml-2 font-mono text-xs text-blue-600/80 dark:text-blue-400/80">
               {formatDateRange(trip.start_date, trip.end_date)}
             </span>
           </div>

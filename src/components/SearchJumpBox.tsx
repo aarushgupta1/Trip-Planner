@@ -72,7 +72,7 @@ export default function SearchJumpBox({ attractions, onClose, onJumpToDate, onSe
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[70vh] overflow-hidden flex flex-col"
+        className="bg-white dark:bg-gray-900 rounded-2xl border-t-2 border-t-blue-600 shadow-2xl w-full max-w-lg max-h-[70vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">

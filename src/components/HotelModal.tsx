@@ -180,7 +180,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
       onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-900 rounded-2xl border-t-2 border-t-blue-600 shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -319,7 +319,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
                   type="button"
                   onClick={resetDatesToRange}
                   disabled={!isOnline}
-                  className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline disabled:opacity-50 disabled:no-underline"
+                  className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:no-underline"
                 >
                   Reset to check-in/check-out
                 </button>
@@ -337,7 +337,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
                     className={[
                       'px-1.5 py-1.5 rounded-lg border text-[10px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
                       selected
-                        ? 'border-violet-400 dark:border-violet-700 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300'
+                        ? 'border-blue-400 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
                         : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800',
                     ].join(' ')}
                   >
@@ -352,8 +352,8 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
           </div>
 
           {/* Price box */}
-          <div className="rounded-xl border-2 border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30 p-4">
-            <label className="block text-[11px] font-semibold text-violet-500 dark:text-violet-400 uppercase tracking-wide mb-2">
+          <div className="rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-4">
+            <label className="block text-[11px] font-semibold text-blue-500 dark:text-blue-400 uppercase tracking-wide mb-2">
               Price
             </label>
             <div className="flex items-center gap-2">
@@ -362,14 +362,14 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
                 onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
                 disabled={!isOnline}
                 aria-label="Currency"
-                className="shrink-0 px-2.5 py-2.5 rounded-lg border border-violet-200 dark:border-violet-800 bg-white dark:bg-gray-900 text-violet-700 dark:text-violet-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60"
+                className="shrink-0 px-2.5 py-2.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-blue-700 dark:text-blue-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
               >
                 {(CURRENCY_OPTIONS.includes(form.currency) ? CURRENCY_OPTIONS : [form.currency, ...CURRENCY_OPTIONS]).map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
               <div className="relative flex-1">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-violet-400 dark:text-violet-500 font-bold pointer-events-none">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400 dark:text-blue-500 font-bold pointer-events-none">
                   {currencySymbol(form.currency).trim()}
                 </span>
                 <input
@@ -381,12 +381,12 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
                   onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                   disabled={!isOnline}
                   placeholder="0.00"
-                  className="w-full pl-9 pr-3 py-2.5 border border-violet-200 dark:border-violet-800 rounded-lg text-lg font-bold bg-white dark:bg-gray-900 text-violet-700 dark:text-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500 placeholder-violet-200 dark:placeholder-violet-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full pl-9 pr-3 py-2.5 border border-blue-200 dark:border-blue-800 rounded-lg text-lg font-bold bg-white dark:bg-gray-900 text-blue-700 dark:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-blue-200 dark:placeholder-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </div>
             </div>
             {nights && form.price.trim() && !isNaN(Number(form.price)) && (
-              <p className="mt-2 text-xs text-violet-500 dark:text-violet-400">
+              <p className="mt-2 text-xs text-blue-500 dark:text-blue-400">
                 ≈ {currencySymbol(form.currency).trim()}{(Number(form.price) / nights).toFixed(2)} / night · {nights} night{nights === 1 ? '' : 's'}
               </p>
             )}
