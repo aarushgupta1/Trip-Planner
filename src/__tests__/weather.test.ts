@@ -41,3 +41,38 @@ describe('helpers', () => {
     expect(weatherKindLabel('typical')).toMatch(/10-year/);
   });
 });
+
+import { averageHourly, parseHourlyBlock } from '@/lib/weather';
+
+describe('hourly weather', () => {
+  it('parses an Open-Meteo hourly block', () => {
+    const pts = parseHourlyBlock(
+      {
+        time: ['2026-08-06T00:00', '2026-08-06T13:00', '2026-08-06T14:00'],
+        temperature_2m: [60.4, 79.6, null],
+        weather_code: [0, 61, 3],
+        precipitation_probability: [0, 40.4, 10],
+      },
+      'chance'
+    );
+    expect(pts).toEqual([
+      { hour: 0, temp: 60, code: 0, rain: { kind: 'chance', value: 0 } },
+      { hour: 13, temp: 80, code: 61, rain: { kind: 'chance', value: 40 } },
+    ]); // the hour with a missing temperature is dropped
+  });
+  it('reads rainfall amounts and the older weathercode key', () => {
+    const pts = parseHourlyBlock(
+      { time: ['2026-08-06T09:00'], temperature_2m: [70], weathercode: [3], precipitation: [0.123] },
+      'amount'
+    );
+    expect(pts[0].rain).toEqual({ kind: 'amount', value: 0.12 });
+    expect(parseHourlyBlock(undefined, 'chance')).toEqual([]);
+  });
+  it('averages the same hour across years', () => {
+    const y1 = [{ hour: 9, temp: 70, code: 0, rain: { kind: 'amount' as const, value: 0.1 } }];
+    const y2 = [{ hour: 9, temp: 80, code: 61, rain: { kind: 'amount' as const, value: 0.3 } }];
+    const y3 = [{ hour: 9, temp: 75, code: 61, rain: { kind: 'amount' as const, value: 0.2 } }];
+    expect(averageHourly([y1, y2, y3])).toEqual([{ hour: 9, temp: 75, code: 61, rain: { kind: 'amount', value: 0.2 } }]);
+    expect(averageHourly([])).toEqual([]);
+  });
+});

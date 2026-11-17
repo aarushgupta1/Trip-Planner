@@ -215,6 +215,125 @@ export async function getWeatherForDates(trip: Pick<Trip, 'start_date' | 'end_da
   return result;
 }
 
+// ---- Hour-by-hour weather for a single day ----
+
+export interface HourlyPoint {
+  hour: number; // 0–23, local to the city
+  temp: number; // °F
+  code: number; // WMO weather code
+  // Forecasts give a chance of rain; recorded and typical days give how much
+  // actually fell (inches).
+  rain: { kind: 'chance' | 'amount'; value: number } | null;
+}
+
+export interface HourlyWeather {
+  city: string; // cityKey()
+  cityName: string;
+  kind: WeatherKind;
+  hours: HourlyPoint[];
+}
+
+interface HourlyBlock {
+  time: string[];
+  temperature_2m: (number | null)[];
+  weather_code?: (number | null)[];
+  weathercode?: (number | null)[];
+  precipitation_probability?: (number | null)[];
+  precipitation?: (number | null)[];
+}
+
+// Open-Meteo hourly block → points. `rain` says which rain field to read.
+export function parseHourlyBlock(block: HourlyBlock | undefined, rain: 'chance' | 'amount'): HourlyPoint[] {
+  if (!block?.time) return [];
+  const codes = block.weather_code ?? block.weathercode ?? [];
+  const out: HourlyPoint[] = [];
+  block.time.forEach((t, i) => {
+    const temp = block.temperature_2m[i];
+    const code = codes[i];
+    if (temp == null || code == null) return;
+    const raw = rain === 'chance' ? block.precipitation_probability?.[i] : block.precipitation?.[i];
+    out.push({
+      hour: Number(t.slice(11, 13)),
+      temp: Math.round(temp),
+      code,
+      rain: raw == null ? null : { kind: rain, value: rain === 'chance' ? Math.round(raw) : Math.round(raw * 100) / 100 },
+    });
+  });
+  return out;
+}
+
+// Same hour across several years → one "typical" hour: mean temperature and
+// rainfall, most common weather code.
+export function averageHourly(days: HourlyPoint[][]): HourlyPoint[] {
+  const out: HourlyPoint[] = [];
+  for (let hour = 0; hour < 24; hour++) {
+    const samples = days.map((d) => d.find((p) => p.hour === hour)).filter((p): p is HourlyPoint => !!p);
+    if (samples.length === 0) continue;
+    const avg = averageReadings(samples.map((p) => ({ high: p.temp, low: p.temp, code: p.code })));
+    const rains = samples.map((p) => p.rain?.value).filter((v): v is number => typeof v === 'number');
+    out.push({
+      hour,
+      temp: avg!.high,
+      code: avg!.code,
+      rain: rains.length ? { kind: 'amount', value: Math.round((rains.reduce((a, b) => a + b, 0) / rains.length) * 100) / 100 } : null,
+    });
+  }
+  return out;
+}
+
+const HOURLY = 'hourly=temperature_2m,weather_code,precipitation_probability,precipitation&temperature_unit=fahrenheit&precipitation_unit=inch';
+
+async function fetchHourly(url: string, rain: 'chance' | 'amount'): Promise<HourlyPoint[]> {
+  try {
+    const res = await fetch(url, { next: { revalidate: 1800 } });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { hourly?: HourlyBlock };
+    return parseHourlyBlock(data.hourly, rain);
+  } catch {
+    return [];
+  }
+}
+
+// Best data for the day, same rule as the daily numbers: a live forecast when
+// it's within reach, recorded hours once it has passed, otherwise the
+// 10-year average for that date.
+export async function getHourlyWeather(city: TripCity, date: string): Promise<HourlyWeather | null> {
+  const today = todayIn(city.timezone);
+  const source = weatherSourceFor(date, today);
+  const tz = encodeURIComponent(city.timezone);
+  const where = `latitude=${city.lat}&longitude=${city.lng}&timezone=${tz}`;
+  const base = { city: cityKey(city), cityName: city.name };
+
+  if (source === 'forecast') {
+    const kind: WeatherKind = date < today ? 'observed' : 'forecast';
+    const hours = await fetchHourly(
+      `https://api.open-meteo.com/v1/forecast?${where}&${HOURLY}&start_date=${date}&end_date=${date}`,
+      kind === 'forecast' ? 'chance' : 'amount'
+    );
+    return hours.length ? { ...base, kind, hours } : null;
+  }
+
+  if (source === 'archive') {
+    const hours = await fetchHourly(
+      `https://archive-api.open-meteo.com/v1/archive?${where}&${HOURLY}&start_date=${date}&end_date=${date}`,
+      'amount'
+    );
+    return hours.length ? { ...base, kind: 'observed', hours } : null;
+  }
+
+  const thisYear = Number(today.slice(0, 4));
+  const days = await Promise.all(
+    Array.from({ length: HISTORY_YEARS }, (_, i) => thisYear - 1 - i).map((year) => {
+      const shifted = shiftYear(date, year);
+      return shifted
+        ? fetchHourly(`https://archive-api.open-meteo.com/v1/archive?${where}&${HOURLY}&start_date=${shifted}&end_date=${shifted}`, 'amount')
+        : Promise.resolve([] as HourlyPoint[]);
+    })
+  );
+  const hours = averageHourly(days.filter((d) => d.length > 0));
+  return hours.length ? { ...base, kind: 'typical', hours } : null;
+}
+
 export function weatherKindLabel(kind: WeatherKind): string {
   if (kind === 'forecast') return 'Forecast';
   if (kind === 'observed') return 'Recorded';

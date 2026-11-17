@@ -13,7 +13,7 @@ import {
   TouchSensor,
 } from '@dnd-kit/core';
 import { useState, useTransition, useEffect, useRef, useMemo } from 'react';
-import { Attraction, Category, DayNote, Hotel } from '@/lib/types';
+import { Attraction, DayNote, Hotel } from '@/lib/types';
 import { formatDate, timeAgo, formatTimeInZone, getHotelDates } from '@/lib/utils';
 import { getEditorName } from '@/lib/editorName';
 import { cityKey } from '@/lib/trip';
@@ -47,9 +47,10 @@ import CreateModal from './CreateModal';
 import GuidePanel from './GuidePanel';
 import type { GuideSuggestion } from '@/lib/guide';
 import SearchJumpBox from './SearchJumpBox';
-import MoreMenu from './MoreMenu';
+import NotificationsMenu from './NotificationsMenu';
+import HourlyWeatherModal from './HourlyWeatherModal';
 import TimeLabels from './TimeLabels';
-import { ChevronLeft, ChevronRight, Pencil, PanelLeftOpen, WifiOff, CalendarDays, Search, ArrowRight, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, PanelLeftOpen, WifiOff, CalendarDays, Search, ArrowRight, Sparkles, Clock, Map as MapIcon } from 'lucide-react';
 
 // Leaflet touches `window`/`document` at import time, so it can only ever
 // load on the client — ssr: false keeps it (and its CSS) out of the server
@@ -63,7 +64,7 @@ function pageForDate(dates: string[], date: string, daysPerPage: number): number
 
 
 function DayHeader({
-  date, note, onNoteChange, onNoteCommit, weather, hotels, onHotelClick, readOnly, isToday,
+  date, note, onNoteChange, onNoteCommit, weather, hotels, onHotelClick, onOpenMap, onOpenHourly, readOnly, isToday,
 }: {
   date: string;
   note: string;
@@ -72,6 +73,8 @@ function DayHeader({
   weather?: DayWeather[];
   hotels: Hotel[];
   onHotelClick: (hotel: Hotel) => void;
+  onOpenMap: () => void;
+  onOpenHourly: () => void;
   readOnly: boolean;
   isToday: boolean;
 }) {
@@ -136,6 +139,16 @@ function DayHeader({
             );
           })}
         </div>
+        {weather && weather.length > 0 && (
+          <button
+            onClick={onOpenHourly}
+            className="mt-1 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40 transition-colors"
+            title="See the weather hour by hour"
+          >
+            <Clock size={9} />
+            Hourly weather
+          </button>
+        )}
         {hotelsToday.length > 0 && (
           <div className="flex items-center justify-center gap-1 mt-1 flex-wrap px-0.5">
             {hotelsToday.map((hotel) => (
@@ -170,7 +183,7 @@ function DayHeader({
             onChange={(e) => onNoteChange(e.target.value)}
             onBlur={(e) => { setEditing(false); onNoteCommit(e.target.value); }}
             rows={2}
-            placeholder="Notes for this day…"
+            placeholder="Scratchpad for this day…"
             className="w-full text-[9px] text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded px-1.5 py-1 outline-none resize-none leading-tight placeholder-gray-300 dark:placeholder-gray-600 shadow-sm"
           />
         ) : (
@@ -185,11 +198,20 @@ function DayHeader({
             {!readOnly && (
               <span className="flex items-center gap-1 text-gray-300 dark:text-gray-600 italic group-hover:text-gray-400 dark:group-hover:text-gray-500 transition-colors">
                 <Pencil size={8} />
-                + notes
+                Scratchpad
               </span>
             )}
           </button>
         )}
+        {/* Map for just this day */}
+        <button
+          onClick={onOpenMap}
+          className="mt-0.5 flex w-full items-center gap-1 rounded px-1.5 py-0.5 text-left text-[9px] font-medium text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors"
+          title="See this day on a map"
+        >
+          <MapIcon size={9} />
+          See this day on a map
+        </button>
       </div>
     </div>
   );
@@ -236,7 +258,10 @@ export default function CalendarBoard({
   const [currentPage, setCurrentPage] = useState(0);
   const [createSlot, setCreateSlot] = useState<{ date: string; time: string } | null>(null);
   const [showSearch, setShowSearch] = useState(false);
-  const [showMap, setShowMap] = useState(false);
+  // The day whose map is open (null = closed).
+  const [mapDate, setMapDate] = useState<string | null>(null);
+  // The day whose hourly weather is open (null = closed).
+  const [hourlyDate, setHourlyDate] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
   // An event Aero suggested, opened in the normal add-event form for review.
   const [guideSuggestion, setGuideSuggestion] = useState<GuideSuggestion | null>(null);
@@ -254,10 +279,6 @@ export default function CalendarBoard({
   // visible regardless of this flag (forced by `sm:translate-x-0` below).
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [travelModes, setTravelModes] = useState<Record<string, TravelMode>>({});
-  // Purely a view filter — hidden categories are still real events
-  // underneath; everything else (conflict checks, search, drag/resize)
-  // keeps working off the full unfiltered `attractions` state below.
-  const [hiddenCategories, setHiddenCategories] = useState<Category[]>([]);
   const [dayNotes, setDayNotes] = useState<Record<string, string>>(initialDayNotes);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [, startTransition] = useTransition();
@@ -278,12 +299,9 @@ export default function CalendarBoard({
 
   useEffect(() => {
     try { setTravelModes(JSON.parse(localStorage.getItem('vienna-travel-modes') ?? '{}')); } catch {}
-    try { setHiddenCategories(JSON.parse(localStorage.getItem('vienna-hidden-categories') ?? '[]')); } catch {}
+    // Left over from the removed "Show categories" filter — clear it out.
+    try { localStorage.removeItem('vienna-hidden-categories'); } catch {}
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('vienna-hidden-categories', JSON.stringify(hiddenCategories));
-  }, [hiddenCategories]);
 
   // Records the last moment the app was confirmed online, so the offline
   // banner can tell you how stale the cached view you're looking at is
@@ -489,7 +507,7 @@ export default function CalendarBoard({
       try {
         await upsertDayNote(trip.id, date, text, getEditorName());
       } catch {
-        setToastMsg("Couldn't save day note — check your connection and try again.");
+        setToastMsg("Couldn't save your scratchpad — check your connection and try again.");
       }
     });
   };
@@ -525,11 +543,8 @@ export default function CalendarBoard({
     (currentPage + 1) * daysPerPage
   );
 
-  // Hidden categories are excluded here only — this feeds DayColumn's
-  // rendering, not the `attractions` state itself, so drag/resize/conflict
-  // checks and search elsewhere in this component still see every event.
   const scheduledByDate = TRIP_DATES.reduce<Record<string, Attraction[]>>((acc, date) => {
-    acc[date] = attractions.filter((a) => a.scheduled_date === date && !hiddenCategories.includes(a.category));
+    acc[date] = attractions.filter((a) => a.scheduled_date === date);
     return acc;
   }, {});
 
@@ -540,7 +555,7 @@ export default function CalendarBoard({
   const nextEvent = useMemo(() => {
     if (!now) return null;
     const upcoming = attractions
-      .filter((a) => !hiddenCategories.includes(a.category) && a.scheduled_date && a.start_time)
+      .filter((a) => a.scheduled_date && a.start_time)
       .filter(
         (a) =>
           a.scheduled_date! > now.date ||
@@ -552,7 +567,7 @@ export default function CalendarBoard({
         return a.start_time!.localeCompare(b.start_time!);
       });
     return upcoming[0] ?? null;
-  }, [attractions, hiddenCategories, now]);
+  }, [attractions, now]);
 
   // "Today"/"Tomorrow" when applicable (most common case, since this is
   // "what's next"), otherwise the weekday — the chip covers events days
@@ -796,16 +811,12 @@ export default function CalendarBoard({
                 </div>
               )}
 
-              {/* Map, alerts, and the category filter live in one "More"
-                  menu — occasional actions, not worth a button each. */}
-              <MoreMenu
-                onOpenMap={() => setShowMap(true)}
+              {/* Event alerts bell — on the opposite side of the toolbar from search. */}
+              <NotificationsMenu
                 notifyPermission={notifyPermission}
                 notifySubscribed={notifySubscribed}
                 onEnableNotifications={enablePushNotifications}
                 onDisableNotifications={disablePushNotifications}
-                hiddenCategories={hiddenCategories}
-                onHiddenCategoriesChange={setHiddenCategories}
               />
             </div>
 
@@ -879,6 +890,8 @@ export default function CalendarBoard({
                   weather={weather[date]}
                   hotels={hotels}
                   onHotelClick={(hotel) => setHotelModalState({ mode: 'edit', hotel })}
+                  onOpenMap={() => setMapDate(date)}
+                  onOpenHourly={() => setHourlyDate(date)}
                   onNoteChange={(v) => updateDayNote(date, v)}
                   onNoteCommit={(v) => commitDayNote(date, v)}
                   readOnly={!isOnline}
@@ -1009,14 +1022,16 @@ export default function CalendarBoard({
         />
       )}
 
-      {showMap && (
+      {mapDate && (
         <MapView
-          attractions={attractions.filter((a) => !hiddenCategories.includes(a.category))}
+          attractions={attractions}
           hotels={hotels}
-          initialDate={now && TRIP_DATES.includes(now.date) ? now.date : visibleDates[0]}
-          onClose={() => setShowMap(false)}
+          initialDate={mapDate}
+          onClose={() => setMapDate(null)}
         />
       )}
+
+      {hourlyDate && <HourlyWeatherModal date={hourlyDate} onClose={() => setHourlyDate(null)} />}
 
       {hotelModalState && (
         <HotelModal

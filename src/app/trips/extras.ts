@@ -3,7 +3,8 @@
 import { getAttractions } from '@/app/actions';
 import { getTrip } from '@/app/trips/actions';
 import { getTravelSegments, TravelSegment } from '@/lib/travel';
-import { DayWeather, getWeatherForDates } from '@/lib/weather';
+import { getCitiesForDate } from '@/lib/trip';
+import { DayWeather, HourlyWeather, getHourlyWeather, getWeatherForDates } from '@/lib/weather';
 
 export interface TripExtras {
   weather: Record<string, DayWeather[]>;
@@ -23,4 +24,13 @@ export async function getTripExtras(tripId: string): Promise<TripExtras> {
       .catch(() => ({})),
   ]);
   return { weather, travelSegments };
+}
+
+// Hour-by-hour weather for one day, for each city the trip is in that day.
+// Fetched only when someone opens it, so it costs nothing until used.
+export async function getDayHourly(tripId: string, date: string): Promise<HourlyWeather[]> {
+  const trip = await getTrip(tripId); // null if it isn't yours — RLS
+  if (!trip || date < trip.start_date || date > trip.end_date) return [];
+  const results = await Promise.all(getCitiesForDate(trip.cities, date).map((c) => getHourlyWeather(c, date).catch(() => null)));
+  return results.filter((r): r is HourlyWeather => r !== null);
 }
