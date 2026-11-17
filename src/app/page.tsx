@@ -4,6 +4,7 @@ import BrandMark from '@/components/BrandMark';
 import { getTrips } from '@/app/trips/actions';
 import { getCurrentUser, isSupabaseConfigured } from '@/lib/supabase/server';
 import { generateTripDates, getCityOrder } from '@/lib/trip';
+import TripForm from '@/components/TripForm';
 import TripCard from '@/components/TripCard';
 import UserMenu from '@/components/UserMenu';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -17,8 +18,9 @@ function tripStatus(start: string, end: string, today: string): { label: string;
   return { label: days === 1 ? 'Starts tomorrow' : `In ${days} days`, tone: 'soon' };
 }
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ edit?: string }> }) {
-  const { edit } = await searchParams;
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ edit?: string; new?: string }> }) {
+  const { edit, new: isNew } = await searchParams;
+  const creating = isNew === '1';
   const configured = isSupabaseConfigured();
   const user = await getCurrentUser();
   const trips = configured && user ? await getTrips() : [];
@@ -98,16 +100,28 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               {trips.length === 0 ? 'Where to next?' : 'Pick up where you left off, or start a new adventure.'}
             </p>
           </div>
-          <Link
-            href="/trips/new"
-            className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
-          >
-            <Plus size={15} />
-            New trip
-          </Link>
+          {!creating && (
+            <Link
+              href="/?new=1"
+              scroll={false}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+            >
+              <Plus size={15} />
+              New trip
+            </Link>
+          )}
         </div>
 
-        {trips.length === 0 ? (
+        {creating && (
+          <div className="ticket ticket-editing ticket-sightseeing mb-8">
+            <div className="ticket-paper ticket-paper-editing px-5 py-5 sm:px-6">
+              <div className="mb-4 font-mono text-[11px] tracking-[0.08em] text-[var(--accent)]">NEW TRIP</div>
+              <TripForm mode="create" />
+            </div>
+          </div>
+        )}
+
+        {trips.length === 0 && creating ? null : trips.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-14 text-center">
             <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
               <Plane size={22} />
@@ -117,7 +131,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               Choose where you’re going and your dates — we’ll set up a day-by-day planner.
             </p>
             <Link
-              href="/trips/new"
+              href="/?new=1"
               className="mt-5 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
             >
               <Plus size={15} />
