@@ -4,17 +4,21 @@ import { useEffect, useRef, useState } from 'react';
 import { LogOut, User } from 'lucide-react';
 import { getEditorName, setEditorName } from '@/lib/editorName';
 
-// Account button: shows who's signed in and signs out. Also seeds the
-// "last edited by ___" name from the account so edits are attributed to the
-// right person without any extra setup.
+// Account button (the blue circle): shows who's signed in, lets you change the
+// name shown on your edits ("last edited by ___"), and signs out. The edit
+// name starts as the account name, so edits are attributed to the right
+// person without any setup.
 export default function UserMenu({ displayName, email }: { displayName: string; email: string }) {
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [nameSaved, setNameSaved] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!getEditorName() && displayName) setEditorName(displayName);
-  }, [displayName]);
+    const fallback = displayName || email.split('@')[0];
+    if (!getEditorName() && fallback) setEditorName(fallback);
+  }, [displayName, email]);
 
   useEffect(() => {
     if (!open) return;
@@ -46,7 +50,13 @@ export default function UserMenu({ displayName, email }: { displayName: string; 
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (!open) {
+            setNameDraft(getEditorName() ?? displayName);
+            setNameSaved(false);
+          }
+          setOpen((o) => !o);
+        }}
         title={displayName || email}
         aria-label="Account menu"
         className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors"
@@ -58,6 +68,41 @@ export default function UserMenu({ displayName, email }: { displayName: string; 
           <div className="px-3.5 py-2 border-b border-gray-100 dark:border-gray-800">
             {displayName && <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{displayName}</p>}
             <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{email}</p>
+          </div>
+          <div className="px-3.5 py-2.5 border-b border-gray-100 dark:border-gray-800">
+            <label htmlFor="edit-name" className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">
+              Name on your edits
+            </label>
+            <div className="flex gap-1.5">
+              <input
+                id="edit-name"
+                type="text"
+                value={nameDraft}
+                onChange={(e) => {
+                  setNameDraft(e.target.value);
+                  setNameSaved(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setEditorName(nameDraft);
+                    setNameSaved(true);
+                  }
+                }}
+                maxLength={40}
+                placeholder={displayName || 'Your name'}
+                className="min-w-0 flex-1 px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={() => {
+                  setEditorName(nameDraft);
+                  setNameSaved(true);
+                }}
+                className="shrink-0 px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors"
+              >
+                {nameSaved ? 'Saved' : 'Save'}
+              </button>
+            </div>
+            <p className="mt-1 text-[10px] leading-snug text-gray-400 dark:text-gray-500">Shown as “last edited by …” on events and hotels you change.</p>
           </div>
           <button
             onClick={handleSignOut}

@@ -5,8 +5,6 @@ import { getAttractions, getDayNotes, getHotels } from '@/app/actions';
 import { getInviteToken, getTripPeople } from '@/app/trips/actions';
 import { loadTrip } from '@/lib/loaders';
 import CalendarBoard from '@/components/CalendarBoardClient';
-import ThemeToggle from '@/components/ThemeToggle';
-import EditorNameBadge from '@/components/EditorNameBadge';
 import PresenceIndicator from '@/components/PresenceIndicator';
 import ShareTripButton from '@/components/ShareTripButton';
 import InstallPrompt from '@/components/InstallPrompt';
@@ -62,7 +60,6 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <InstallPrompt />
           {user && <PresenceIndicator tripId={trip.id} userId={user.id} name={displayName} />}
-          <EditorNameBadge />
           {user && (
             <ShareTripButton
               tripId={trip.id}
@@ -82,7 +79,6 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
               <span className="hidden sm:inline">Trip settings</span>
             </Link>
           )}
-          <ThemeToggle />
           {user && (
             <UserMenu
               displayName={(user.user_metadata?.full_name as string | undefined) ?? ''}
