@@ -12,9 +12,13 @@ import { findTimeConflict } from '@/lib/timeUtils';
 import LocationAutocomplete from './LocationAutocomplete';
 import TimeInput from './TimeInput';
 import ConfirmDialog from './ConfirmDialog';
+import VisibilityPicker from './VisibilityPicker';
+import type { TripPerson } from '@/app/trips/actions';
 import { X, Trash2, Save, Upload, FileText, WifiOff, MapPin, Link2, Check, BedDouble } from 'lucide-react';
 
 interface EditModalProps {
+  people: TripPerson[];
+  currentUserId: string;
   attraction: Attraction;
   allAttractions: Attraction[];
   hotels: Hotel[];
@@ -24,7 +28,7 @@ interface EditModalProps {
   readOnly?: boolean;
 }
 
-export default function EditModal({ attraction, allAttractions, hotels, onClose, onSaved, onDeleted, readOnly = false }: EditModalProps) {
+export default function EditModal({ people, currentUserId, attraction, allAttractions, hotels, onClose, onSaved, onDeleted, readOnly = false }: EditModalProps) {
   // Legacy unscheduled events (from before the "Unscheduled" option was
   // removed) fall back to the trip's first day rather than an empty value,
   // since every event now needs a real scheduled date.
@@ -44,6 +48,8 @@ export default function EditModal({ attraction, allAttractions, hotels, onClose,
     arrival_timezone: attraction.arrival_timezone,
   };
   const [form, setForm] = useState(initialForm);
+  const [visibleTo, setVisibleTo] = useState<string[] | null>(attraction.visible_to ?? null);
+  const isCreator = !attraction.created_by || attraction.created_by === currentUserId;
   const [isPending, startTransition] = useTransition();
   const [isDeleting, setIsDeleting] = useState(false);
   const [conflictError, setConflictError] = useState<string | null>(null);
@@ -177,6 +183,7 @@ export default function EditModal({ attraction, allAttractions, hotels, onClose,
         open_days: form.open_days.trim() || null,
         departure_timezone: form.departure_timezone,
         arrival_timezone: form.arrival_timezone,
+        ...(isCreator ? { visible_to: visibleTo } : {}),
       };
       // Only send location when it actually changed, so the server doesn't
       // re-geocode on every save (e.g. just moving the time).
@@ -327,6 +334,8 @@ export default function EditModal({ attraction, allAttractions, hotels, onClose,
               <p className="mt-1.5 text-xs text-red-500 dark:text-red-400 font-medium">{conflictError}</p>
             )}
           </div>
+
+          <VisibilityPicker people={people} currentUserId={currentUserId} value={visibleTo} onChange={setVisibleTo} canChange={isCreator} disabled={readOnly} />
 
           {/* Category */}
           <div>

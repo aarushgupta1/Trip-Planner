@@ -5,6 +5,7 @@ import { Attraction, Category, DayNote, Hotel, Currency } from '@/lib/types';
 import { CalendarTimezone } from '@/lib/utils';
 import { geocodeAddress, searchLocations as searchLocationsGeo, GeocodeSuggestion } from '@/lib/geocode';
 import { createSupabaseServer, isSupabaseConfigured } from '@/lib/supabase/server';
+import { normalizeVisibility } from '@/lib/visibility';
 
 // Every query below runs as the signed-in user (cookie session), so Row
 // Level Security — not just the explicit trip_id filters — keeps each
@@ -14,6 +15,12 @@ const getSupabase = createSupabaseServer;
 async function getTripCountryCodes(tripId: string): Promise<string[]> {
   const { data } = await (await getSupabase()).from('trip_cities').select('country_code').eq('trip_id', tripId);
   return [...new Set((data ?? []).map((r) => String(r.country_code).toLowerCase()).filter(Boolean))];
+}
+
+// Everyone on a trip, as ids (for checking a chosen audience is real people).
+async function tripPeopleIds(tripId: string): Promise<string[]> {
+  const { data } = await (await getSupabase()).rpc('get_trip_people', { p_trip: tripId });
+  return (Array.isArray(data) ? (data as { user_id: string }[]) : []).map((p) => p.user_id);
 }
 
 export async function getAttractions(tripId: string): Promise<Attraction[]> {
@@ -44,15 +51,22 @@ export async function createAttractionObject(
     open_days?: string | null;
     departure_timezone?: CalendarTimezone;
     arrival_timezone?: CalendarTimezone;
+    visible_to?: string[] | null; // null/omitted = everyone on the trip
   },
   editedBy?: string | null
 ): Promise<Attraction> {
+  const supabase = await getSupabase();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) throw new Error('You need to sign in again.');
+  const visibleTo = data.visible_to ? normalizeVisibility(data.visible_to, auth.user.id, await tripPeopleIds(data.trip_id)) : null;
   const geo = data.location ? await geocodeAddress(data.location, await getTripCountryCodes(data.trip_id)) : null;
 
   const { data: row, error } = await (await getSupabase())
     .from('attractions')
     .insert({
       ...data,
+      visible_to: visibleTo,
+      created_by: auth.user.id,
       lat: geo?.lat ?? null,
       lng: geo?.lng ?? null,
       edited_by: editedBy ?? null,
@@ -82,13 +96,25 @@ export async function scheduleAttraction(id: string, scheduledDate: string | nul
 
 export async function updateAttraction(
   id: string,
-  data: Partial<Pick<Attraction, 'name' | 'description' | 'category' | 'scheduled_date' | 'start_time' | 'end_time' | 'notes' | 'location' | 'opening_hours' | 'open_days' | 'departure_timezone' | 'arrival_timezone'>>,
+  data: Partial<Pick<Attraction, 'name' | 'description' | 'category' | 'scheduled_date' | 'start_time' | 'end_time' | 'notes' | 'location' | 'opening_hours' | 'open_days' | 'departure_timezone' | 'arrival_timezone' | 'visible_to'>>,
   editedBy?: string | null
 ): Promise<void> {
   // Callers only pass `location` when it actually changed, so re-geocoding
   // here doesn't fire on every unrelated edit (e.g. just moving the time).
   const patch: Record<string, unknown> = { ...data, edited_by: editedBy ?? null, updated_at: new Date().toISOString() };
   const supabase = await getSupabase();
+  // Only the person who added an event can change who sees it; for anyone
+  // else the audience is left as it was.
+  if ('visible_to' in patch) {
+    const { data: auth } = await supabase.auth.getUser();
+    const { data: row } = await supabase.from('attractions').select('trip_id, created_by').eq('id', id).single();
+    if (!auth.user || !row || (row.created_by && row.created_by !== auth.user.id)) {
+      delete patch.visible_to;
+    } else {
+      patch.visible_to = normalizeVisibility(patch.visible_to as string[] | null, auth.user.id, await tripPeopleIds(row.trip_id));
+      if (!row.created_by) patch.created_by = auth.user.id;
+    }
+  }
   if ('location' in patch) {
     const location = (patch.location as string | null) || null;
     let geo = null;

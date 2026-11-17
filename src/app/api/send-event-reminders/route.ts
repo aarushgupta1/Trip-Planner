@@ -43,6 +43,7 @@ interface AttractionRow {
   scheduled_date: string;
   start_time: string;
   trip_id: string;
+  visible_to: string[] | null;
   trips: { owner_id: string | null; timezone: string } | { owner_id: string | null; timezone: string }[] | null;
 }
 
@@ -95,7 +96,7 @@ async function handleReminders(request: NextRequest) {
 
   const { data: attractions, error: attractionsError } = await supabase
     .from('attractions')
-    .select('id, name, location, scheduled_date, start_time, trip_id, trips!inner(owner_id, timezone)')
+    .select('id, name, location, scheduled_date, start_time, trip_id, visible_to, trips!inner(owner_id, timezone)')
     .in('scheduled_date', candidateDates)
     .not('start_time', 'is', null);
 
@@ -162,7 +163,7 @@ async function handleReminders(request: NextRequest) {
     const payload = JSON.stringify({ title, body, tag: `event-${attraction.id}`, url: `/trips/${attraction.trip_id}` });
 
     await Promise.all(
-      subs.filter((sub) => recipientsByTrip.get(attraction.trip_id)?.has(sub.user_id)).map(async (sub) => {
+      subs.filter((sub) => recipientsByTrip.get(attraction.trip_id)?.has(sub.user_id) && (!attraction.visible_to || attraction.visible_to.includes(sub.user_id))).map(async (sub) => {
         try {
           await webpush.sendNotification(
             { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },

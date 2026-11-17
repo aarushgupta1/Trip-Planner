@@ -18,6 +18,8 @@ import { formatDate, timeAgo, formatTimeInZone, getHotelDates } from '@/lib/util
 import { getEditorName } from '@/lib/editorName';
 import { cityKey } from '@/lib/trip';
 import { useTrip } from './TripProvider';
+import { canSeeAttraction } from '@/lib/visibility';
+import type { TripPerson } from '@/app/trips/actions';
 import { DayWeather, HourlyWeather, weatherCodeInfo, weatherKindLabel } from '@/lib/weather';
 import { getDayHourly } from '@/app/trips/extras';
 import { getWordOfDay } from '@/lib/wordOfDay';
@@ -319,7 +321,11 @@ export default function CalendarBoard({
   initialHotels,
   guideEnabled,
   placesEnabled,
+  people,
+  currentUserId,
 }: {
+  people: TripPerson[];
+  currentUserId: string;
   guideEnabled: boolean;
   placesEnabled: boolean;
   initialAttractions: Attraction[];
@@ -479,11 +485,17 @@ export default function CalendarBoard({
       .channel(`attractions-realtime-${trip.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'attractions', filter: `trip_id=eq.${trip.id}` }, (payload: any) => {
         const row = payload.new as Attraction;
+        if (!canSeeAttraction(row, currentUserId)) return;
         setAttractions((prev) => prev.find((a) => a.id === row.id) ? prev : [...prev, row]);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'attractions', filter: `trip_id=eq.${trip.id}` }, (payload: any) => {
         const row = payload.new as Attraction;
-        setAttractions((prev) => prev.map((a) => a.id === row.id ? row : a));
+        // Someone narrowed who can see it and that no longer includes you.
+        if (!canSeeAttraction(row, currentUserId)) {
+          setAttractions((prev) => prev.filter((a) => a.id !== row.id));
+          return;
+        }
+        setAttractions((prev) => prev.some((a) => a.id === row.id) ? prev.map((a) => a.id === row.id ? row : a) : [...prev, row]);
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'attractions' }, (payload: any) => {
         const id = (payload.old as { id: string }).id;
@@ -492,7 +504,7 @@ export default function CalendarBoard({
       .subscribe();
 
     return () => { client.removeChannel(channel); };
-  }, [trip.id]);
+  }, [trip.id, currentUserId]);
 
   // Realtime: sync day notes made on your other devices
   useEffect(() => {
@@ -1094,6 +1106,8 @@ export default function CalendarBoard({
 
       {editingAttraction && (
         <EditModal
+          people={people}
+          currentUserId={currentUserId}
           attraction={editingAttraction}
           allAttractions={attractions}
           hotels={hotels}
@@ -1122,6 +1136,8 @@ export default function CalendarBoard({
 
       {(createSlot || guideSuggestion) && (
         <CreateModal
+          people={people}
+          currentUserId={currentUserId}
           date={createSlot?.date ?? guideSuggestion?.date}
           startTime={createSlot?.time ?? (guideSuggestion?.start_time || undefined)}
           prefill={guideSuggestion ?? undefined}

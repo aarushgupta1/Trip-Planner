@@ -25,6 +25,8 @@ export interface Attraction {
   opening_hours: string | null; // free-text, e.g. "9:00 AM – 5:00 PM"
   open_days: string | null; // free-text, e.g. "Tue–Sun (closed Mondays)"
   ticket_urls: string[]; // uploaded ticket files (images/PDFs) in Supabase Storage
+  created_by: string | null; // who added it (null for events from before sharing existed)
+  visible_to: string[] | null; // null = everyone on the trip; otherwise these people (creator included)
   edited_by: string | null; // self-chosen display name of whoever last saved this — no auth, not verified
   updated_at: string;
   created_at: string;

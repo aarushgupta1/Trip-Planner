@@ -15,6 +15,8 @@ import { useOnlineStatus } from '@/lib/useOnlineStatus';
 import LocationAutocomplete from './LocationAutocomplete';
 import TimeInput from './TimeInput';
 import ConfirmDialog from './ConfirmDialog';
+import VisibilityPicker from './VisibilityPicker';
+import type { TripPerson } from '@/app/trips/actions';
 import { X, Upload, FileText, WifiOff, MapPin, BedDouble } from 'lucide-react';
 
 interface CreateModalProps {
@@ -33,13 +35,15 @@ interface CreateModalProps {
     opening_hours: string;
     open_days: string;
   }>;
+  people: TripPerson[];
+  currentUserId: string;
   allAttractions: Attraction[];
   hotels: Hotel[];
   onClose: () => void;
   onCreated: (attraction: Attraction) => void;
 }
 
-export default function CreateModal({ date, startTime, prefill, allAttractions, hotels, onClose, onCreated }: CreateModalProps) {
+export default function CreateModal({ date, startTime, prefill, people, currentUserId, allAttractions, hotels, onClose, onCreated }: CreateModalProps) {
   const { trip, dates: tripDates, getCityForDate, cityNames, homeZoneLabel } = useTrip();
   const today = getNowInZone(trip.timezone).date;
   const defaultDate = date ?? (tripDates.includes(today) ? today : tripDates[0]);
@@ -61,6 +65,7 @@ export default function CreateModal({ date, startTime, prefill, allAttractions, 
     departure_timezone: 'local' as CalendarTimezone,
     arrival_timezone: 'local' as CalendarTimezone,
   };
+  const [visibleTo, setVisibleTo] = useState<string[] | null>(null);
   const [form, setForm] = useState(initialForm);
   const [pendingTickets, setPendingTickets] = useState<File[]>([]);
   const [isPending, startTransition] = useTransition();
@@ -126,6 +131,7 @@ export default function CreateModal({ date, startTime, prefill, allAttractions, 
             open_days: form.open_days.trim() || null,
             departure_timezone: form.departure_timezone,
             arrival_timezone: form.arrival_timezone,
+            visible_to: visibleTo,
           },
           getEditorName()
         );
@@ -241,6 +247,8 @@ export default function CreateModal({ date, startTime, prefill, allAttractions, 
               <p className="mt-1.5 text-xs text-red-500 dark:text-red-400 font-medium">{conflictError}</p>
             )}
           </div>
+
+          <VisibilityPicker people={people} currentUserId={currentUserId} value={visibleTo} onChange={setVisibleTo} canChange />
 
           {/* Category */}
           <div>

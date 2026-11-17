@@ -7,7 +7,7 @@ import type { Attraction, Hotel } from '@/lib/types';
 const base: Attraction = {
   id: 'a', trip_id: 't', name: 'Place', description: null, category: 'landmark', scheduled_date: '2026-08-06',
   start_time: null, end_time: null, notes: null, location: null, lat: null, lng: null, opening_hours: null,
-  open_days: null, ticket_urls: [], edited_by: null, updated_at: '', created_at: '',
+  open_days: null, ticket_urls: [], edited_by: null, created_by: null, visible_to: null, updated_at: '', created_at: '',
   departure_timezone: 'local', arrival_timezone: 'local',
 };
 const at = (o: Partial<Attraction>): Attraction => ({ ...base, ...o });

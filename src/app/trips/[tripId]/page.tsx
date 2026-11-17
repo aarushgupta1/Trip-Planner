@@ -98,6 +98,8 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
           initialHotels={hotels}
           guideEnabled={await isGuideEnabled()}
           placesEnabled={await isPlaceLookupEnabled()}
+          people={people}
+          currentUserId={user?.id ?? ''}
         />
       </div>
     </main>

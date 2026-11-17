@@ -439,8 +439,38 @@ drop policy if exists "public_update" on attractions;
 drop policy if exists "public_delete" on attractions;
 drop policy if exists "owner_all" on attractions;
 drop policy if exists "member_all" on attractions;
-create policy "member_all" on attractions for all to authenticated
-  using (public.is_trip_member(trip_id)) with check (public.is_trip_member(trip_id));
+drop policy if exists "member_select" on attractions;
+drop policy if exists "member_insert" on attractions;
+drop policy if exists "member_update" on attractions;
+drop policy if exists "member_delete" on attractions;
+
+-- Who made an event and who it's shown to. visible_to null = everyone on the
+-- trip (the default, and what every existing event is). Otherwise only the
+-- creator and the listed people can see, edit or delete it.
+alter table attractions add column if not exists created_by uuid references auth.users(id) on delete set null default auth.uid();
+alter table attractions add column if not exists visible_to uuid[];
+
+create or replace function public.can_see_attraction(p_trip uuid, p_created_by uuid, p_visible_to uuid[])
+returns boolean
+language sql stable security definer
+set search_path = public
+as $$
+  select public.is_trip_member(p_trip)
+     and (p_visible_to is null
+          or p_created_by is null
+          or p_created_by = auth.uid()
+          or auth.uid() = any(p_visible_to));
+$$;
+
+create policy "member_select" on attractions for select to authenticated
+  using (public.can_see_attraction(trip_id, created_by, visible_to));
+create policy "member_insert" on attractions for insert to authenticated
+  with check (public.can_see_attraction(trip_id, created_by, visible_to));
+create policy "member_update" on attractions for update to authenticated
+  using (public.can_see_attraction(trip_id, created_by, visible_to))
+  with check (public.can_see_attraction(trip_id, created_by, visible_to));
+create policy "member_delete" on attractions for delete to authenticated
+  using (public.can_see_attraction(trip_id, created_by, visible_to));
 
 drop policy if exists "public_select" on hotels;
 drop policy if exists "public_insert" on hotels;

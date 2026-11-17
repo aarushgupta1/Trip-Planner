@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { Attraction, Hotel } from '@/lib/types';
 import { Trip } from '@/lib/trip';
+import type { TripPerson } from '@/app/trips/actions';
 import { getTripExtras, TripExtras } from '@/app/trips/extras';
 import { TripProvider } from './TripProvider';
 
@@ -16,6 +17,8 @@ export default function CalendarBoardClient(props: {
   initialHotels: Hotel[];
   guideEnabled: boolean;
   placesEnabled: boolean;
+  people: TripPerson[];
+  currentUserId: string;
 }) {
   const { trip, ...rest } = props;
   // Weather and travel times arrive a moment after the calendar itself.

@@ -4,7 +4,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Attraction } from '@/lib/types';
 import { CATEGORY_COLORS, CATEGORY_ICONS, formatTimeInZone, CalendarTimezone } from '@/lib/utils';
-import { Clock } from 'lucide-react';
+import { Clock, Lock } from 'lucide-react';
 import { useTrip } from './TripProvider';
 
 function linkify(text: string) {
@@ -91,6 +91,7 @@ export default function AttractionBlock({
       <div className={['flex flex-col h-full min-h-0 relative', isTiny ? 'px-1.5 py-0.5' : 'px-2 py-1.5'].join(' ')}>
         <span className={['font-semibold truncate leading-tight', isShort ? 'text-[10px]' : 'text-xs', colors.text].join(' ')}>
           {CATEGORY_ICONS[attraction.category]} {attraction.name}
+          {attraction.visible_to && <Lock size={9} className="ml-1 inline-block align-baseline opacity-60" aria-label="Only visible to some people" />}
         </span>
 
         {!isShort && !isCompact && attraction.start_time && (
