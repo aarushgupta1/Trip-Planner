@@ -12,11 +12,13 @@ import {
   GuideSuggestion,
   LOOKUP_PLACE_TOOL,
   SUGGEST_EVENTS_TOOL,
+  suggestEventsToolFor,
   buildGuideContext,
   buildGuideSystemPrompt,
   parseSuggestions,
   validateGuideMessages,
 } from '@/lib/guide';
+import { categoriesForTripType } from '@/lib/utils';
 
 const DEFAULT_MODEL = 'claude-haiku-5-5';
 const DEFAULT_DAILY_LIMIT = 40;
@@ -75,7 +77,7 @@ export async function askGuide(tripId: string, rawMessages: GuideMessage[]): Pro
   const issues = checkItinerary({ dates, attractions, hotels });
   const placesKey = process.env.GOOGLE_PLACES_API_KEY;
   const lookupEnabled = !!placesKey;
-  const system = buildGuideSystemPrompt(buildGuideContext({ trip, attractions, hotels, dayNotes, weather, issues }), { lookupEnabled });
+  const system = buildGuideSystemPrompt(buildGuideContext({ trip, attractions, hotels, dayNotes, weather, issues }), { lookupEnabled, tripType: trip.trip_type });
   const maxLookups = Number(process.env.GUIDE_MAX_LOOKUPS) || DEFAULT_MAX_LOOKUPS;
 
   type Block = { type: string; id?: string; text?: string; name?: string; input?: unknown };
@@ -84,7 +86,7 @@ export async function askGuide(tripId: string, rawMessages: GuideMessage[]): Pro
 
   const call = async (history: ApiMessage[], opts: { withTools: boolean }): Promise<Outcome> => {
     const tools: unknown[] = [];
-    if (opts.withTools) tools.push(SUGGEST_EVENTS_TOOL);
+    if (opts.withTools) tools.push(suggestEventsToolFor(trip.trip_type));
     if (opts.withTools && lookupEnabled) tools.push(LOOKUP_PLACE_TOOL);
     let res: Response;
     try {
@@ -124,7 +126,7 @@ export async function askGuide(tripId: string, rawMessages: GuideMessage[]): Pro
   const suggestionsOf = (blocks: Block[]) =>
     blocks
       .filter((b) => b.type === 'tool_use' && b.name === SUGGEST_EVENTS_TOOL.name)
-      .flatMap((b) => parseSuggestions(b.input, dates));
+      .flatMap((b) => parseSuggestions(b.input, dates, categoriesForTripType(trip.trip_type)));
 
   // The conversation, extended each time Aero asks to look something up: its
   // request goes in, the live result comes back, and it continues.

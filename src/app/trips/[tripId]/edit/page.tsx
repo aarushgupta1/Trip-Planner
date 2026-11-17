@@ -19,6 +19,7 @@ export default async function EditTripPage({ params }: { params: Promise<{ tripI
     start_date: trip.start_date,
     end_date: trip.end_date,
     home_timezone: trip.home_timezone,
+    trip_type: trip.trip_type,
     cities: trip.cities.map((c) => ({
       name: c.name,
       country: c.country,

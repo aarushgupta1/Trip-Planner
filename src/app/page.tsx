@@ -42,6 +42,7 @@ export default async function DashboardPage() {
       isOwner={t.is_owner}
       passengers={t.people.map((p) => p.display_name)}
       number={t.ticket_no}
+      tripType={t.trip_type}
     />
   );
 

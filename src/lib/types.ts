@@ -5,7 +5,9 @@ import { CalendarTimezone } from './utils';
 // correctly — see SELECTABLE_CATEGORIES in utils.ts for the list actually
 // offered in the category picker and filter menu, which excludes both and
 // adds "palace" / "cathedral" / "tour" instead.
-export type Category = 'museum' | 'food' | 'landmark' | 'palace' | 'cathedral' | 'tour' | 'entertainment' | 'flights' | 'travel' | 'other';
+export type Category = 'museum' | 'food' | 'landmark' | 'palace' | 'cathedral' | 'tour' | 'entertainment' | 'flights' | 'travel' | 'other'
+  | 'slopes' | 'lesson' | 'rental' | 'apres' // ski
+  | 'beach' | 'water' | 'boat' | 'spa'; // beach
 
 export interface Attraction {
   id: string;

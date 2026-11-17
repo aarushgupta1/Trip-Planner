@@ -81,6 +81,14 @@ export const CATEGORY_COLORS: Record<Category, { bg: string; text: string; borde
     border: 'border-cyan-200 dark:border-cyan-800',
     dot: 'bg-cyan-400',
   },
+  slopes: { bg: 'bg-sky-50 dark:bg-sky-950', text: 'text-sky-700 dark:text-sky-300', border: 'border-sky-200 dark:border-sky-800', dot: 'bg-sky-400' },
+  lesson: { bg: 'bg-indigo-50 dark:bg-indigo-950', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-200 dark:border-indigo-800', dot: 'bg-indigo-400' },
+  rental: { bg: 'bg-slate-50 dark:bg-slate-950', text: 'text-slate-700 dark:text-slate-300', border: 'border-slate-200 dark:border-slate-800', dot: 'bg-slate-400' },
+  apres: { bg: 'bg-rose-50 dark:bg-rose-950', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-800', dot: 'bg-rose-400' },
+  beach: { bg: 'bg-amber-50 dark:bg-amber-950', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800', dot: 'bg-amber-400' },
+  water: { bg: 'bg-cyan-50 dark:bg-cyan-950', text: 'text-cyan-700 dark:text-cyan-300', border: 'border-cyan-200 dark:border-cyan-800', dot: 'bg-cyan-400' },
+  boat: { bg: 'bg-blue-50 dark:bg-blue-950', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800', dot: 'bg-blue-400' },
+  spa: { bg: 'bg-teal-50 dark:bg-teal-950', text: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800', dot: 'bg-teal-400' },
   other: {
     bg: 'bg-gray-50 dark:bg-gray-800',
     text: 'text-gray-600 dark:text-gray-300',
@@ -100,6 +108,14 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   flights: 'Flight',
   travel: 'Travel',
   other: 'Other',
+  slopes: 'Skiing & snowboarding',
+  lesson: 'Lesson',
+  rental: 'Gear rental',
+  apres: 'Après-ski',
+  beach: 'Beach',
+  water: 'Water sports',
+  boat: 'Boat trip',
+  spa: 'Spa & wellness',
 };
 
 export const CATEGORY_ICONS: Record<Category, string> = {
@@ -113,6 +129,14 @@ export const CATEGORY_ICONS: Record<Category, string> = {
   flights: '✈️',
   travel: '🚆',
   other: '📍',
+  slopes: '⛷️',
+  lesson: '🎿',
+  rental: '🎿',
+  apres: '🍻',
+  beach: '🏖️',
+  water: '🏄',
+  boat: '⛵',
+  spa: '💆',
 };
 
 // Categories actually offered in the category picker (create/edit modals)
@@ -130,6 +154,26 @@ export const SELECTABLE_CATEGORIES: Category[] = [
   'travel',
   'other',
 ];
+
+export type TripType = 'sightseeing' | 'ski' | 'beach';
+export const TRIP_TYPES: TripType[] = ['sightseeing', 'ski', 'beach'];
+export const TRIP_TYPE_LABELS: Record<TripType, string> = { sightseeing: 'Sightseeing', ski: 'Ski', beach: 'Beach' };
+export function normalizeTripType(v: unknown): TripType {
+  return TRIP_TYPES.includes(v as TripType) ? (v as TripType) : 'sightseeing';
+}
+
+// What the category picker offers for each kind of trip. Flights, travel and
+// other are always available.
+const CATEGORIES_BY_TRIP_TYPE: Record<TripType, Category[]> = {
+  sightseeing: SELECTABLE_CATEGORIES,
+  ski: ['slopes', 'lesson', 'rental', 'apres', 'food', 'spa', 'entertainment', 'flights', 'travel', 'other'],
+  beach: ['beach', 'water', 'boat', 'spa', 'food', 'landmark', 'entertainment', 'flights', 'travel', 'other'],
+};
+export function categoriesForTripType(type: TripType, current?: Category): Category[] {
+  const list = CATEGORIES_BY_TRIP_TYPE[type] ?? SELECTABLE_CATEGORIES;
+  // An existing event keeps its category even if this trip type doesn't offer it.
+  return current && !list.includes(current) ? [current, ...list] : list;
+}
 
 export function formatDate(dateStr: string): { weekday: string; monthDay: string } {
   const date = new Date(dateStr + 'T12:00:00Z');

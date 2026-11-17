@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { LogOut, User } from 'lucide-react';
+import { Check, LogOut, Pencil, User } from 'lucide-react';
 import { getEditorName, setEditorName } from '@/lib/editorName';
 
 // Account button (the blue circle): shows who's signed in, lets you change the
@@ -12,7 +12,8 @@ export default function UserMenu({ displayName, email }: { displayName: string; 
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
-  const [nameSaved, setNameSaved] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [shownName, setShownName] = useState(displayName);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,6 +46,15 @@ export default function UserMenu({ displayName, email }: { displayName: string; 
     }
   };
 
+  const saveName = () => {
+    const n = nameDraft.trim();
+    if (n) {
+      setEditorName(n);
+      setShownName(n);
+    }
+    setEditing(false);
+  };
+
   const initial = (displayName || email || '?').trim().charAt(0).toUpperCase();
 
   return (
@@ -52,8 +62,8 @@ export default function UserMenu({ displayName, email }: { displayName: string; 
       <button
         onClick={() => {
           if (!open) {
-            setNameDraft(getEditorName() ?? displayName);
-            setNameSaved(false);
+            setEditing(false);
+            setShownName(getEditorName() || displayName);
           }
           setOpen((o) => !o);
         }}
@@ -65,44 +75,45 @@ export default function UserMenu({ displayName, email }: { displayName: string; 
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1.5 z-50 w-56 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1.5">
-          <div className="px-3.5 py-2 border-b border-gray-100 dark:border-gray-800">
-            {displayName && <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{displayName}</p>}
-            <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{email}</p>
-          </div>
           <div className="px-3.5 py-2.5 border-b border-gray-100 dark:border-gray-800">
-            <label htmlFor="edit-name" className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">
-              Name on your edits
-            </label>
-            <div className="flex gap-1.5">
-              <input
-                id="edit-name"
-                type="text"
-                value={nameDraft}
-                onChange={(e) => {
-                  setNameDraft(e.target.value);
-                  setNameSaved(false);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    setEditorName(nameDraft);
-                    setNameSaved(true);
-                  }
-                }}
-                maxLength={40}
-                placeholder={displayName || 'Your name'}
-                className="min-w-0 flex-1 px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                onClick={() => {
-                  setEditorName(nameDraft);
-                  setNameSaved(true);
-                }}
-                className="shrink-0 px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors"
-              >
-                {nameSaved ? 'Saved' : 'Save'}
-              </button>
-            </div>
-            <p className="mt-1 text-[10px] leading-snug text-gray-400 dark:text-gray-500">Shown as “last edited by …” on events and hotels you change.</p>
+            {editing ? (
+              <div className="flex items-center gap-1.5">
+                <input
+                  autoFocus
+                  aria-label="Your name"
+                  type="text"
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveName();
+                    if (e.key === 'Escape') setEditing(false);
+                  }}
+                  maxLength={40}
+                  placeholder={displayName || 'Your name'}
+                  className="min-w-0 flex-1 px-2 py-1 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button onClick={saveName} aria-label="Save name" className="shrink-0 rounded-md p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-800">
+                  <Check size={15} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <p className="min-w-0 text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{shownName || 'Add your name'}</p>
+                <button
+                  onClick={() => {
+                    setNameDraft(shownName);
+                    setEditing(true);
+                  }}
+                  aria-label="Edit your name"
+                  title="Edit your name"
+                  className="shrink-0 rounded-md p-1 text-gray-400 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <Pencil size={12} />
+                </button>
+              </div>
+            )}
+            <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{email}</p>
+            {editing && <p className="mt-1 text-[10px] leading-snug text-gray-400 dark:text-gray-500">Shown as “last edited by …” on events and hotels you change.</p>}
           </div>
           <button
             onClick={handleSignOut}

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { Attraction, Category, Hotel } from '@/lib/types';
-import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, formatDateFull, getMapsUrl, getDirectionsUrl, getHotelDates, CalendarTimezone } from '@/lib/utils';
+import { CATEGORY_LABELS, CATEGORY_ICONS, categoriesForTripType, formatDateFull, getMapsUrl, getDirectionsUrl, getHotelDates, CalendarTimezone } from '@/lib/utils';
 import { getNowInZone } from '@/lib/tripTime';
 import { useTrip } from './TripProvider';
 import { attractionPlaceholder } from '@/lib/placeExamples';
@@ -92,7 +92,7 @@ export default function CreateModal({ date, startTime, prefill, allAttractions, 
     onClose();
   };
 
-  const categories = SELECTABLE_CATEGORIES;
+  const categories = categoriesForTripType(trip.trip_type);
 
   const handleCreate = () => {
     if (!form.name.trim() || !isOnline) return;

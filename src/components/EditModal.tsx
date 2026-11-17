@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { Attraction, Category, Hotel } from '@/lib/types';
-import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, formatDateFull, getMapsUrl, getDirectionsUrl, distanceKm, getHotelDates, timeAgo } from '@/lib/utils';
+import { CATEGORY_LABELS, CATEGORY_ICONS, categoriesForTripType, formatDateFull, getMapsUrl, getDirectionsUrl, distanceKm, getHotelDates, timeAgo } from '@/lib/utils';
 import { useTrip } from './TripProvider';
 import { updateAttraction, deleteAttraction, removeTicketUrl } from '@/app/actions';
 import { getEditorName } from '@/lib/editorName';
@@ -28,7 +28,7 @@ export default function EditModal({ attraction, allAttractions, hotels, onClose,
   // Legacy unscheduled events (from before the "Unscheduled" option was
   // removed) fall back to the trip's first day rather than an empty value,
   // since every event now needs a real scheduled date.
-  const { dates: tripDates, getCityForDate, cityNames, homeZoneLabel } = useTrip();
+  const { trip, dates: tripDates, getCityForDate, cityNames, homeZoneLabel } = useTrip();
   const initialForm = {
     name: attraction.name,
     description: attraction.description ?? '',
@@ -143,7 +143,7 @@ export default function EditModal({ attraction, allAttractions, hotels, onClose,
       setTicketError(err instanceof Error ? err.message : "Couldn't remove ticket — try again.");
     }
   };
-  const categories = SELECTABLE_CATEGORIES;
+  const categories = categoriesForTripType(trip.trip_type, attraction.category);
 
   const handleSave = () => {
     if (!form.name.trim()) return;

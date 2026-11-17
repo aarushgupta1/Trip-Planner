@@ -17,6 +17,7 @@ const valid: TripInput = {
   start_date: '2026-09-01',
   end_date: '2026-09-07',
   home_timezone: 'America/New_York',
+  trip_type: 'sightseeing',
   cities: [city],
 };
 

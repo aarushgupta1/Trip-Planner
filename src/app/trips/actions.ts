@@ -53,8 +53,8 @@ export async function searchCities(query: string): Promise<CitySuggestion[]> {
   }
 }
 
-type TripRow = { id: string; created_at: string | null; owner_id: string | null; name: string; start_date: string; end_date: string; timezone: string; home_timezone: string };
-const TRIP_COLUMNS = 'id, created_at, owner_id, name, start_date, end_date, timezone, home_timezone';
+type TripRow = { id: string; created_at: string | null; owner_id: string | null; name: string; start_date: string; end_date: string; timezone: string; home_timezone: string; trip_type: string | null };
+const TRIP_COLUMNS = 'id, created_at, owner_id, name, start_date, end_date, timezone, home_timezone, trip_type';
 
 // A trip plus whether the signed-in user owns it (as opposed to having been
 // invited). Only owners can edit trip settings, share or delete.
@@ -149,6 +149,7 @@ export async function createTrip(input: TripInput): Promise<{ id: string } | { e
       end_date: input.end_date,
       timezone: primaryTimezone(input),
       home_timezone: input.home_timezone,
+      trip_type: input.trip_type,
     })
     .select('id')
     .single();
@@ -180,6 +181,7 @@ export async function updateTrip(id: string, input: TripInput): Promise<{ ok: tr
       end_date: input.end_date,
       timezone: primaryTimezone(input),
       home_timezone: input.home_timezone,
+      trip_type: input.trip_type,
     })
     .eq('id', id)
     .select('id');

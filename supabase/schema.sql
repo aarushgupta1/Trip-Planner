@@ -41,7 +41,9 @@ alter table attractions add column if not exists open_days text;
 -- this constraint so any existing rows already using them stay valid.
 alter table attractions drop constraint if exists attractions_category_check;
 alter table attractions add constraint attractions_category_check
-  check (category in ('museum', 'food', 'landmark', 'palace', 'cathedral', 'tour', 'entertainment', 'flights', 'travel', 'other'));
+  check (category in ('museum', 'food', 'landmark', 'palace', 'cathedral', 'tour', 'entertainment', 'flights', 'travel', 'other',
+                      'slopes', 'lesson', 'rental', 'apres', 'beach', 'water', 'boat', 'spa'));
+
 
 -- Uploaded ticket files (images/PDFs), stored as public URLs into the
 -- "tickets" storage bucket set up below.
@@ -282,6 +284,12 @@ create table if not exists trips (
   home_timezone text not null default 'America/New_York',
   created_at    timestamptz default now()
 );
+
+-- Kind of vacation (sightseeing / ski / beach) — decides which event
+-- categories the trip offers. Existing trips stay sightseeing.
+alter table trips add column if not exists trip_type text not null default 'sightseeing';
+alter table trips drop constraint if exists trips_trip_type_check;
+alter table trips add constraint trips_trip_type_check check (trip_type in ('sightseeing', 'ski', 'beach'));
 
 -- One row per stop. A city can appear more than once and ranges can overlap
 -- (e.g. a day trip from one base city to another), same as before.

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Pencil, Trash2 } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 import { deleteTrip } from '@/app/trips/actions';
+import { TripType, TRIP_TYPE_LABELS } from '@/lib/utils';
 import { barcodeBars, cityCode, formatPassengers } from '@/lib/ticket';
 
 const MAX_STOPS_SHOWN = 4;
@@ -39,6 +40,7 @@ export default function TripCard({
   isOwner,
   passengers,
   number,
+  tripType,
 }: {
   id: string;
   name: string;
@@ -49,6 +51,7 @@ export default function TripCard({
   status: { label: string; tone: 'live' | 'soon' | 'past' };
   isOwner: boolean;
   passengers: string[]; // everyone on the trip, owner first
+  tripType: TripType;
   number: number; // 1 for your first trip, 2 for the next, and so on
 }) {
   const router = useRouter();
@@ -90,7 +93,7 @@ export default function TripCard({
         <div className="relative pointer-events-none px-5 pt-4 pb-4 sm:px-6 sm:pt-4 sm:pb-4 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="font-mono text-[11px] tracking-[0.08em] text-[var(--red)]">TRIP {number}</div>
+              <div className="font-mono text-[11px] tracking-[0.08em] text-[var(--red)]">TRIP {number} · {TRIP_TYPE_LABELS[tripType].toUpperCase()}</div>
               <h2 className="mt-0.5 text-base sm:text-[17px] font-semibold leading-snug tracking-tight truncate" title={name}>{name}</h2>
             </div>
             <span
@@ -129,10 +132,16 @@ export default function TripCard({
 
           {pax.shown.length > 0 && (
             <div className="mt-2.5 border-t border-[var(--rule)] pt-2.5 min-w-0">
-              <div className="text-[11px] text-[var(--muted)]">{passengers.length === 1 ? 'Passenger' : 'Passengers'}</div>
-              <div className="text-sm font-medium leading-tight truncate" title={passengers.join(', ')}>
-                {pax.shown.join(', ')}
-                {pax.more > 0 && <span className="font-normal text-[var(--muted)]"> +{pax.more}</span>}
+              <div className="font-mono text-[11px] tracking-[0.08em] text-[var(--red)]">
+                {passengers.length === 1 ? 'PASSENGER' : `PASSENGERS · ${passengers.length}`}
+              </div>
+              <div className="mt-1 flex flex-wrap gap-1.5" title={passengers.join(', ')}>
+                {pax.shown.map((n, i) => (
+                  <span key={`${n}-${i}`} className="max-w-[10rem] truncate rounded-[3px] border border-[var(--rule)] px-2 py-0.5 text-[13px] font-semibold leading-tight">
+                    {n}
+                  </span>
+                ))}
+                {pax.more > 0 && <span className="self-center text-xs text-[var(--muted)]">+{pax.more} more</span>}
               </div>
             </div>
           )}

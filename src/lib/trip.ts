@@ -1,4 +1,4 @@
-import { datesInRange } from './utils';
+import { datesInRange, normalizeTripType, TripType } from './utils';
 
 // A trip is a date range plus one or more stops ("cities"), each with its
 // own date range. Everything that used to be hardcoded for one particular
@@ -26,6 +26,7 @@ export interface Trip {
   end_date: string; // YYYY-MM-DD
   timezone: string; // destination (calendar) timezone
   home_timezone: string; // where the travelers live
+  trip_type: TripType;
   cities: TripCity[];
 }
 
@@ -153,7 +154,7 @@ export function getCountryCodes(cities: TripCity[]): string[] {
 
 // Raw `trips` row joined with its `trip_cities` rows → Trip.
 export function toTrip(
-  row: { id: string; name: string; start_date: string; end_date: string; timezone: string; home_timezone: string },
+  row: { id: string; name: string; start_date: string; end_date: string; timezone: string; home_timezone: string; trip_type?: string | null },
   cities: TripCity[]
 ): Trip {
   return {
@@ -163,6 +164,7 @@ export function toTrip(
     end_date: row.end_date,
     timezone: row.timezone,
     home_timezone: row.home_timezone,
+    trip_type: normalizeTripType(row.trip_type),
     cities: byPosition(cities),
   };
 }

@@ -7,7 +7,7 @@ import { X, Plus, CalendarRange, Globe2, AlertTriangle, Check, Copy, Share2, Use
 import CitySearch from './CitySearch';
 import { createTrip, createInvite, updateTrip, CitySuggestion } from '@/app/trips/actions';
 import { CityInput, TripInput, validateTripInput, MAX_CITIES } from '@/lib/tripInput';
-import { datesInRange, formatDateRange, formatDateShort } from '@/lib/utils';
+import { datesInRange, formatDateRange, formatDateShort, TRIP_TYPES, TRIP_TYPE_LABELS, TripType } from '@/lib/utils';
 import { canNativeShare, inviteMessage, shareInvite } from '@/lib/share';
 
 const inputClass =
@@ -54,6 +54,7 @@ export default function TripForm({
 }) {
   const router = useRouter();
   const [name, setName] = useState(initial?.name ?? '');
+  const [tripType, setTripType] = useState<TripType>(initial?.trip_type ?? 'sightseeing');
   const [startDate, setStartDate] = useState(initial?.start_date ?? '');
   const [endDate, setEndDate] = useState(initial?.end_date ?? '');
   // '' = "use this device's time zone", resolved when saving (so the server
@@ -140,6 +141,7 @@ export default function TripForm({
       start_date: startDate,
       end_date: endDate,
       home_timezone: resolveHomeTimezone(),
+      trip_type: tripType,
       cities: stops.map(({ key: _key, ...rest }) => { void _key; return rest; }),
     };
     const problem = validateTripInput(input);
@@ -273,6 +275,31 @@ export default function TripForm({
           placeholder="e.g. Summer in Italy"
           autoFocus={mode === 'create'}
         />
+      </div>
+
+      {/* Trip type */}
+      <div>
+        <span className={labelClass}>Type of trip</span>
+        <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Type of trip">
+          {TRIP_TYPES.map((t) => (
+            <button
+              key={t}
+              type="button"
+              role="radio"
+              aria-checked={tripType === t}
+              onClick={() => setTripType(t)}
+              className={[
+                'rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
+                tripType === t
+                  ? 'border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                  : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800',
+              ].join(' ')}
+            >
+              {TRIP_TYPE_LABELS[t]}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">Decides which event categories you can pick, and what Aero suggests.</p>
       </div>
 
       {/* Dates */}

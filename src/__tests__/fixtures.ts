@@ -10,6 +10,7 @@ export const LEGACY_TRIP: Trip = {
   end_date: '2026-08-16',
   timezone: 'Europe/Vienna',
   home_timezone: 'America/New_York',
+  trip_type: 'sightseeing',
   cities: [
     { id: 'c1', name: 'Vienna', country: 'Austria', country_code: 'AT', lat: 48.2082, lng: 16.3738, timezone: 'Europe/Vienna', start_date: '2026-08-06', end_date: '2026-08-08', position: 0 },
     { id: 'c2', name: 'Salzburg', country: 'Austria', country_code: 'AT', lat: 47.8095, lng: 13.055, timezone: 'Europe/Vienna', start_date: '2026-08-09', end_date: '2026-08-11', position: 1 },
@@ -27,6 +28,7 @@ export const SINGLE_CITY_TRIP: Trip = {
   end_date: '2027-01-09',
   timezone: 'Australia/Sydney',
   home_timezone: 'America/Los_Angeles',
+  trip_type: 'sightseeing',
   cities: [
     { id: 's1', name: 'Sydney', country: 'Australia', country_code: 'AU', lat: -33.8688, lng: 151.2093, timezone: 'Australia/Sydney', start_date: '2027-01-03', end_date: '2027-01-09', position: 0 },
   ],

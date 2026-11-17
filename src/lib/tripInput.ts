@@ -1,5 +1,5 @@
 import { MAX_TRIP_DAYS } from './trip';
-import { datesInRange } from './utils';
+import { datesInRange, TRIP_TYPES, TripType } from './utils';
 
 // What the "new trip" / "edit trip" form submits.
 export interface CityInput {
@@ -18,6 +18,7 @@ export interface TripInput {
   start_date: string;
   end_date: string;
   home_timezone: string;
+  trip_type: TripType;
   cities: CityInput[];
 }
 
@@ -48,6 +49,7 @@ export function validateTripInput(input: TripInput): string | null {
   if (datesInRange(input.start_date, input.end_date).length > MAX_TRIP_DAYS) {
     return `Trips can be up to ${MAX_TRIP_DAYS} days long.`;
   }
+  if (!TRIP_TYPES.includes(input.trip_type)) return 'Choose a trip type.';
   if (!isValidTimeZone(input.home_timezone)) return 'Choose the time zone you’re travelling from.';
   if (input.cities.length === 0) return 'Add at least one destination.';
   if (input.cities.length > MAX_CITIES) return `A trip can have up to ${MAX_CITIES} stops.`;
