@@ -159,13 +159,17 @@ function DayHeader({
                   const { icon, label } = weatherCodeInfo(cityWeather.code);
                   return (
                     <div
-                      className="flex items-center justify-center gap-1 text-[10px] text-gray-500 dark:text-gray-400"
+                      className="flex flex-col items-center text-[10px] text-gray-500 dark:text-gray-400"
                       title={`${label} — ${city.name} (${weatherKindLabel(cityWeather.kind)})`}
                     >
-                      <span>{icon}</span>
-                      {cityWeather.kind === 'typical' && <span aria-label="historical average">~</span>}
-                      <span className="font-medium">{cityWeather.high}°</span>
-                      <span className="text-gray-300 dark:text-gray-600">/{cityWeather.low}°</span>
+                      <div className="flex items-center justify-center gap-1">
+                        <span>{icon}</span>
+                        <span className="font-medium">{cityWeather.high}°</span>
+                        <span className="text-gray-300 dark:text-gray-600">/{cityWeather.low}°</span>
+                      </div>
+                      {cityWeather.kind === 'typical' && (
+                        <span className="text-[8px] leading-tight text-gray-400 dark:text-gray-500">(historical)</span>
+                      )}
                     </div>
                   );
                 })()}
