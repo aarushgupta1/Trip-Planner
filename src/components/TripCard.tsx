@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -62,6 +62,11 @@ export default function TripCard({
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(startEditing);
+  const editRef = useRef<HTMLDivElement>(null);
+  // Arriving from a trip's "Trip settings" button: bring this ticket into view.
+  useEffect(() => {
+    if (startEditing) editRef.current?.scrollIntoView({ block: 'start' });
+  }, [startEditing]);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -92,7 +97,7 @@ export default function TripCard({
 
   if (editing) {
     return (
-      <div className={['ticket ticket-editing', `ticket-${tripType}`].join(' ')}>
+      <div ref={editRef} className={['ticket ticket-editing scroll-mt-20', `ticket-${tripType}`].join(' ')}>
         <div className="ticket-paper ticket-paper-editing px-5 py-5 sm:px-6">
           <div className="mb-4 font-mono text-[11px] tracking-[0.08em] text-[var(--accent)]">TRIP {number} · EDIT SETTINGS</div>
           <TripForm mode="edit" tripId={id} initial={initial} onCancel={() => setEditing(false)} onSaved={() => setEditing(false)} />
