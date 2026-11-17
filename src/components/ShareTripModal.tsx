@@ -29,6 +29,10 @@ export default function ShareTripModal({
   const [token, setToken] = useState<string | null>(initialToken);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The link itself only appears if the browser refuses to copy it.
+  const [showLink, setShowLink] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [refreshed, setRefreshed] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const link = token && typeof window !== 'undefined' ? `${window.location.origin}/join/${token}` : '';
@@ -48,12 +52,18 @@ export default function ShareTripModal({
     };
   }, [isOwner, initialToken, tripId]);
 
+  // Replaces the invite link; the old one stops working. Tucked under "More options".
   const newLink = () =>
     startTransition(async () => {
       setError(null);
       const result = await createInvite(tripId);
-      if ('error' in result) setError(result.error);
-      else setToken(result.token);
+      if ('error' in result) {
+        setError(result.error);
+        return;
+      }
+      setToken(result.token);
+      setShowLink(false);
+      setRefreshed(true);
     });
 
   const copy = async () => {
@@ -62,7 +72,8 @@ export default function ShareTripModal({
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      setError('Copy failed — select the link and copy it manually.');
+      setShowLink(true);
+      setError('Copy failed — select the link below and copy it yourself.');
     }
   };
 
@@ -106,43 +117,67 @@ export default function ShareTripModal({
             </p>
             {token ? (
               <>
-                <div className="flex gap-2">
-                  {canNativeShare() && (
+                {canNativeShare() ? (
+                  <>
                     <button
                       onClick={share}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+                      className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
                     >
                       <Share2 size={15} />
                       Share
                     </button>
-                  )}
+                    <button
+                      onClick={copy}
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+                    >
+                      {copied ? <Check size={13} /> : <Copy size={13} />}
+                      {copied ? 'Copied' : 'Copy link'}
+                    </button>
+                  </>
+                ) : (
                   <button
                     onClick={copy}
-                    className={[
-                      'inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors',
-                      canNativeShare()
-                        ? 'border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
-                        : 'flex-1 bg-blue-600 hover:bg-blue-700 text-white',
-                    ].join(' ')}
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
                   >
                     {copied ? <Check size={15} /> : <Copy size={15} />}
                     {copied ? 'Copied' : 'Copy link'}
                   </button>
+                )}
+                {showLink && (
+                  <input
+                    readOnly
+                    autoFocus
+                    value={link}
+                    onFocus={(e) => e.currentTarget.select()}
+                    aria-label="Invite link"
+                    className="mt-2 w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-500 bg-gray-50 dark:bg-gray-800 dark:text-gray-300"
+                  />
+                )}
+                <div className="mt-3 border-t border-gray-100 dark:border-gray-800 pt-2">
+                  <button
+                    onClick={() => setMoreOpen((o) => !o)}
+                    aria-expanded={moreOpen}
+                    className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    More options {moreOpen ? '▴' : '▾'}
+                  </button>
+                  {moreOpen && (
+                    <div className="mt-1.5">
+                      <button
+                        disabled={isPending}
+                        onClick={newLink}
+                        className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+                      >
+                        Make a new link
+                      </button>
+                      <p className="mt-0.5 text-[11px] leading-snug text-gray-400 dark:text-gray-500">
+                        {refreshed
+                          ? 'Done. The old link no longer works, and Share and Copy now use the new one.'
+                          : 'Anyone with the old link will no longer be able to join. People already on the trip stay.'}
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <input
-                  readOnly
-                  value={link}
-                  onFocus={(e) => e.currentTarget.select()}
-                  aria-label="Invite link"
-                  className="mt-2 w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-500 bg-gray-50 dark:bg-gray-800 dark:text-gray-300"
-                />
-                <button
-                  disabled={isPending}
-                  onClick={newLink}
-                  className="mt-2 text-xs font-semibold text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline disabled:opacity-50"
-                >
-                  Make a new link (the old one stops working)
-                </button>
               </>
             ) : (
               <p className="text-sm text-gray-400 dark:text-gray-500">{error ? '' : 'Getting your link ready…'}</p>

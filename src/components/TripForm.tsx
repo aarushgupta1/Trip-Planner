@@ -69,6 +69,8 @@ export default function TripForm({
   const [shareAfter, setShareAfter] = useState(false);
   const [created, setCreated] = useState<{ id: string; link: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  // The link itself only appears if the browser refuses to copy it.
+  const [showLink, setShowLink] = useState(false);
 
   const timeZones = useMemo(() => {
     const fn = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf;
@@ -174,7 +176,8 @@ export default function TripForm({
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      setError('Copy failed — select the link and copy it manually.');
+      setShowLink(true);
+      setError('Copy failed — select the link below and copy it yourself.');
     }
   };
 
@@ -195,36 +198,49 @@ export default function TripForm({
         <div>
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Your trip is ready</p>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Send this link to anyone you want to plan with. They’ll sign in (or sign up) and join, and can edit events,
+            Send the invite link to anyone you want to plan with. They’ll sign in (or sign up) and join, and can edit events,
             hotels and notes. You can turn the link off any time from the trip’s Share button.
           </p>
         </div>
-        {canNativeShare() && (
-          <button
-            type="button"
-            onClick={shareNow}
-            className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors"
-          >
-            <Share2 size={15} />
-            Share invite
-          </button>
-        )}
-        <div className="flex gap-2">
-          <input
-            readOnly
-            value={created.link}
-            onFocus={(e) => e.currentTarget.select()}
-            className="min-w-0 flex-1 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-xs bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
-          />
+        {canNativeShare() ? (
+          <div>
+            <button
+              type="button"
+              onClick={shareNow}
+              className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors"
+            >
+              <Share2 size={15} />
+              Share invite
+            </button>
+            <button
+              type="button"
+              onClick={copyLink}
+              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+            >
+              {copied ? <Check size={13} /> : <Copy size={13} />}
+              {copied ? 'Copied' : 'Copy link'}
+            </button>
+          </div>
+        ) : (
           <button
             type="button"
             onClick={copyLink}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+            className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors"
           >
-            {copied ? <Check size={14} /> : <Copy size={14} />}
-            {copied ? 'Copied' : 'Copy'}
+            {copied ? <Check size={15} /> : <Copy size={15} />}
+            {copied ? 'Copied' : 'Copy link'}
           </button>
-        </div>
+        )}
+        {showLink && (
+          <input
+            readOnly
+            autoFocus
+            value={created.link}
+            onFocus={(e) => e.currentTarget.select()}
+            aria-label="Invite link"
+            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-500 bg-gray-50 dark:bg-gray-800 dark:text-gray-300"
+          />
+        )}
         {error && <p className="text-xs text-red-500 dark:text-red-400 font-medium">{error}</p>}
         <button
           type="button"
