@@ -32,9 +32,11 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  // getUser() (not getSession()) re-validates the token with Supabase.
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
+  // getClaims() (not getSession()) verifies the token's signature and
+  // refreshes it when it's about to expire — without a network round trip to
+  // Supabase Auth on every page view when the project uses asymmetric keys.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ? data.claims : null;
   const { pathname } = request.nextUrl;
 
   if (!user && !isPublicPath(pathname)) {

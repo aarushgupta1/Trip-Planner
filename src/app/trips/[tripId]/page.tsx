@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft, Settings2 } from 'lucide-react';
 import { getAttractions, getDayNotes, getHotels } from '@/app/actions';
-import { getInviteToken, getTrip, getTripPeople } from '@/app/trips/actions';
+import { getInviteToken, getTripPeople } from '@/app/trips/actions';
+import { loadTrip } from '@/lib/loaders';
 import CalendarBoard from '@/components/CalendarBoardClient';
 import ThemeToggle from '@/components/ThemeToggle';
 import EditorNameBadge from '@/components/EditorNameBadge';
@@ -13,32 +14,30 @@ import UserMenu from '@/components/UserMenu';
 import { getCurrentUser } from '@/lib/supabase/server';
 import { formatCityList } from '@/lib/trip';
 import { formatDateRange } from '@/lib/utils';
-import { getWeatherForDates } from '@/lib/weather';
-import { getTravelSegments } from '@/lib/travel';
 import { isGuideEnabled } from '@/app/guide/actions';
 
 export async function generateMetadata({ params }: { params: Promise<{ tripId: string }> }) {
   const { tripId } = await params;
-  const trip = await getTrip(tripId);
+  const trip = await loadTrip(tripId);
   return { title: trip ? `${trip.name} · Trip Planner` : 'Trip Planner' };
 }
 
 export default async function TripPage({ params }: { params: Promise<{ tripId: string }> }) {
   const { tripId } = await params;
-  const trip = await getTrip(tripId);
-  if (!trip) notFound();
-
-  const user = await getCurrentUser();
-  const attractions = await getAttractions(tripId);
-  const displayName = (user?.user_metadata?.full_name as string | undefined)?.trim() || user?.email?.split('@')[0] || 'Someone';
-  const [weather, travelSegments, dayNotes, hotels, people, inviteToken] = await Promise.all([
-    getWeatherForDates(trip),
-    getTravelSegments(attractions),
+  // Everything below only needs the trip id, so it's all requested at once
+  // rather than one after another. (Weather and travel times load after the
+  // page appears — see getTripExtras.)
+  const [trip, user, attractions, dayNotes, hotels, people] = await Promise.all([
+    loadTrip(tripId),
+    getCurrentUser(),
+    getAttractions(tripId),
     getDayNotes(tripId),
     getHotels(tripId),
     getTripPeople(tripId),
-    trip.is_owner ? getInviteToken(tripId) : Promise.resolve(null),
   ]);
+  if (!trip) notFound();
+  const inviteToken = trip.is_owner ? await getInviteToken(tripId) : null;
+  const displayName = (user?.user_metadata?.full_name as string | undefined)?.trim() || user?.email?.split('@')[0] || 'Someone';
 
   return (
     <main className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-950">
@@ -96,8 +95,6 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
         <CalendarBoard
           trip={trip}
           initialAttractions={attractions}
-          weather={weather}
-          travelSegments={travelSegments}
           initialDayNotes={dayNotes}
           initialHotels={hotels}
           guideEnabled={await isGuideEnabled()}

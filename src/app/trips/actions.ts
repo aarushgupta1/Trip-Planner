@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createSupabaseServer, isSupabaseConfigured } from '@/lib/supabase/server';
+import { createSupabaseServer, getCurrentUser, isSupabaseConfigured } from '@/lib/supabase/server';
 import { Trip, TripCity, toTrip } from '@/lib/trip';
 import { TripInput, validateTripInput } from '@/lib/tripInput';
 
@@ -63,23 +63,16 @@ export type SharedTrip = Trip & { is_owner: boolean };
 export async function getTrips(): Promise<SharedTrip[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createSupabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  const { data: rows, error } = await supabase
-    .from('trips')
-    .select(TRIP_COLUMNS)
-    .order('start_date', { ascending: true });
+  // One query for the trips and their stops together.
+  const [user, { data: rows, error }] = await Promise.all([
+    getCurrentUser(),
+    supabase.from('trips').select(`${TRIP_COLUMNS}, trip_cities(*)`).order('start_date', { ascending: true }),
+  ]);
   if (error) throw new Error(error.message);
-  if (!rows || rows.length === 0) return [];
 
-  const { data: cities, error: citiesError } = await supabase
-    .from('trip_cities')
-    .select('*')
-    .in('trip_id', rows.map((r) => r.id));
-  if (citiesError) throw new Error(citiesError.message);
-
-  return (rows as TripRow[]).map((row) => ({
-    ...toTrip(row, ((cities ?? []) as (TripCity & { trip_id: string })[]).filter((c) => c.trip_id === row.id)),
-    is_owner: row.owner_id === auth.user?.id,
+  return ((rows ?? []) as (TripRow & { trip_cities: TripCity[] })[]).map((row) => ({
+    ...toTrip(row, row.trip_cities ?? []),
+    is_owner: row.owner_id === user?.id,
   }));
 }
 
@@ -88,18 +81,13 @@ export async function getTrips(): Promise<SharedTrip[]> {
 export async function getTrip(id: string): Promise<SharedTrip | null> {
   if (!isSupabaseConfigured()) return null;
   const supabase = await createSupabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  const { data: row } = await supabase
-    .from('trips')
-    .select(TRIP_COLUMNS)
-    .eq('id', id)
-    .maybeSingle();
+  const [user, { data: row }] = await Promise.all([
+    getCurrentUser(),
+    supabase.from('trips').select(`${TRIP_COLUMNS}, trip_cities(*)`).eq('id', id).maybeSingle(),
+  ]);
   if (!row) return null;
-  const { data: cities } = await supabase.from('trip_cities').select('*').eq('trip_id', id);
-  return {
-    ...toTrip(row as TripRow, (cities ?? []) as TripCity[]),
-    is_owner: (row as TripRow).owner_id === auth.user?.id,
-  };
+  const r = row as TripRow & { trip_cities: TripCity[] };
+  return { ...toTrip(r, r.trip_cities ?? []), is_owner: r.owner_id === user?.id };
 }
 
 function cityRows(tripId: string, input: TripInput) {

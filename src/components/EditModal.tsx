@@ -204,7 +204,7 @@ export default function EditModal({ attraction, allAttractions, hotels, onClose,
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white dark:bg-gray-900 rounded-t-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 sticky top-0 z-10 bg-white dark:bg-gray-900 rounded-t-2xl">
           <h2 className="font-bold text-gray-900 dark:text-gray-100">Edit Event</h2>
           <div className="flex items-center gap-1">
             <button

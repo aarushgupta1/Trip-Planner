@@ -2,14 +2,14 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import TripForm from '@/components/TripForm';
-import { getTrip } from '@/app/trips/actions';
+import { loadTrip } from '@/lib/loaders';
 import type { TripInput } from '@/lib/tripInput';
 
 export const metadata = { title: 'Edit trip · Trip Planner' };
 
 export default async function EditTripPage({ params }: { params: Promise<{ tripId: string }> }) {
   const { tripId } = await params;
-  const trip = await getTrip(tripId);
+  const trip = await loadTrip(tripId);
   if (!trip) notFound();
   // Invited members can plan events but not change the trip itself.
   if (!trip.is_owner) redirect(`/trips/${tripId}`);
