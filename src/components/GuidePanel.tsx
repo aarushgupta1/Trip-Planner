@@ -129,7 +129,7 @@ export default function GuidePanel({
                 </p>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   {placesEnabled
-                    ? 'I can see your days, hotels and weather, so my ideas fit what you’ve already planned. I can also look up places live on Google Maps (opening hours, ratings, prices) and check forecasts and climate on Open-Meteo. Double-check before you go.'
+                    ? 'I know your plans, hotels and weather, and can look up hours, ratings and prices on Google Maps and forecasts on Open-Meteo. Double-check before you go.'
                     : 'I can see your days, hotels and weather, so my ideas fit what you’ve already planned. Double-check opening hours before you go.'}
                 </p>
                 {!chatEnabled && (
