@@ -11,7 +11,7 @@ describe('placeExamples', () => {
   it('falls back to a generic example naming the city', () => {
     expect(attractionPlaceholder('Ghent')).toBe('e.g. A museum or landmark in Ghent');
     expect(attractionPlaceholder('')).toBe('e.g. A museum or landmark');
-    expect(hotelPlaceholder('Ghent')).toBe('e.g. A hotel in Ghent');
+    expect(hotelPlaceholder('Ghent')).toBe('e.g. A place to stay in Ghent');
   });
 });
 

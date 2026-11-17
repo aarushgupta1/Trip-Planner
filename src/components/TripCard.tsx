@@ -81,10 +81,10 @@ export default function TripCard({
   const barWidth = bars.reduce((n, w) => n + w + 1, 0);
   // Red marks what's coming up; finished trips go quiet, and a trip that's
   // underway takes the blue.
-  const statusColor = past ? 'var(--muted)' : status.tone === 'live' ? 'var(--blue)' : 'var(--red)';
+  const statusColor = past ? 'var(--muted)' : status.tone === 'live' ? 'var(--accent)' : 'var(--red)';
 
   return (
-    <div className={['ticket', isPending ? 'opacity-50 pointer-events-none' : ''].join(' ')}>
+    <div className={['ticket', `ticket-${tripType}`, isPending ? 'opacity-50 pointer-events-none' : ''].join(' ')}>
       <div className="ticket-paper">
         {/* Whole ticket opens the trip; the edit/delete buttons sit above this. */}
         <Link href={`/trips/${id}`} aria-label={`Open ${name}`} className="absolute inset-0 z-0 rounded-[6px] outline-none" />
@@ -93,7 +93,7 @@ export default function TripCard({
         <div className="relative pointer-events-none px-5 pt-4 pb-4 sm:px-6 sm:pt-4 sm:pb-4 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="font-mono text-[11px] tracking-[0.08em] text-[var(--red)]">TRIP {number} · {TRIP_TYPE_LABELS[tripType].toUpperCase()}</div>
+              <div className="font-mono text-[11px] tracking-[0.08em] text-[var(--accent)]">TRIP {number} · {TRIP_TYPE_LABELS[tripType].toUpperCase()}</div>
               <h2 className="mt-0.5 text-base sm:text-[17px] font-semibold leading-snug tracking-tight truncate" title={name}>{name}</h2>
             </div>
             <span
@@ -117,7 +117,7 @@ export default function TripCard({
                   </div>
                 )}
                 <div className="min-w-0">
-                  <div className="font-mono text-2xl sm:text-[26px] font-medium leading-none tracking-[0.02em] text-[var(--blue)]">{cityCode(stop.name)}</div>
+                  <div className="font-mono text-2xl sm:text-[26px] font-medium leading-none tracking-[0.02em] text-[var(--accent)]">{cityCode(stop.name)}</div>
                   <div className="mt-1 max-w-[7.5rem] truncate text-[11px] text-[var(--muted)]">{stop.name}</div>
                 </div>
               </div>
@@ -132,7 +132,7 @@ export default function TripCard({
 
           {pax.shown.length > 0 && (
             <div className="mt-2.5 border-t border-[var(--rule)] pt-2.5 min-w-0">
-              <div className="font-mono text-[11px] tracking-[0.08em] text-[var(--red)]">
+              <div className="font-mono text-[11px] tracking-[0.08em] text-[var(--accent)]">
                 {passengers.length === 1 ? 'PASSENGER' : `PASSENGERS · ${passengers.length}`}
               </div>
               <div className="mt-1 flex flex-wrap gap-1.5" title={passengers.join(', ')}>
@@ -153,8 +153,8 @@ export default function TripCard({
         {/* ---- tear-off stub ---- */}
         <div className="ticket-stub pointer-events-none flex items-center justify-between gap-3 px-5 py-3 sm:flex-col sm:justify-center sm:gap-2 sm:px-3 sm:py-4">
           <div className="text-left sm:text-center">
-            <div className="font-mono text-[11px] tracking-[0.1em] text-[var(--red)]">{s.month.toUpperCase()}</div>
-            <div className="text-4xl sm:text-[38px] font-semibold leading-none tracking-tight text-[var(--blue)]">{s.day}</div>
+            <div className="font-mono text-[11px] tracking-[0.1em] text-[var(--accent)]">{s.month.toUpperCase()}</div>
+            <div className="text-4xl sm:text-[38px] font-semibold leading-none tracking-tight text-[var(--accent)]">{s.day}</div>
             <div className="mt-0.5 text-[10px] text-[var(--muted)]">{s.year}</div>
           </div>
 
@@ -174,7 +174,7 @@ export default function TripCard({
               <Link
                 href={`/trips/${id}/edit`}
                 title="Edit trip: name, dates and cities"
-                className="inline-flex items-center gap-1 px-1.5 py-1 rounded text-[11px] font-medium text-[var(--muted)] hover:text-[var(--blue)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                className="inline-flex items-center gap-1 px-1.5 py-1 rounded text-[11px] font-medium text-[var(--muted)] hover:text-[var(--accent)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
               >
                 <Pencil size={13} />
                 Edit
@@ -193,7 +193,7 @@ export default function TripCard({
 
       {confirming && (
         <ConfirmDialog
-          message={`Delete “${name}”? This permanently removes the trip along with all of its events, hotels and notes.`}
+          message={`Delete “${name}”? This permanently removes the trip along with all of its events, lodging and notes.`}
           confirmLabel="Delete trip"
           cancelLabel="Keep it"
           onConfirm={handleDelete}

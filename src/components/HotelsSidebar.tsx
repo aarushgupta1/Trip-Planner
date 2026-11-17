@@ -24,7 +24,7 @@ export default function HotelsSidebar({
       <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 shrink-0">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">Hotels</h2>
+            <h2 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">Lodging</h2>
             <span className="text-xs text-gray-400 dark:text-gray-400 bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded-full">
               {hotels.length}
             </span>
@@ -44,7 +44,7 @@ export default function HotelsSidebar({
             title="Unavailable while offline"
           >
             <Plus size={13} />
-            Add Hotel
+            Add lodging
           </div>
         ) : (
           <button
@@ -52,7 +52,7 @@ export default function HotelsSidebar({
             className="flex items-center justify-center gap-1.5 w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
           >
             <Plus size={13} />
-            Add Hotel
+            Add lodging
           </button>
         )}
       </div>
@@ -62,8 +62,8 @@ export default function HotelsSidebar({
           <div className="flex flex-col items-center justify-center flex-1 text-center text-gray-300 dark:text-gray-700 py-10 gap-2">
             <BedDouble size={28} strokeWidth={1.5} />
             <div className="text-xs leading-relaxed">
-              No hotels yet.<br />
-              Add one to keep track of dates and price!
+              No lodging yet.<br />
+              Add a hotel, rental or stay to track dates and price.
             </div>
           </div>
         ) : (

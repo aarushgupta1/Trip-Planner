@@ -191,12 +191,12 @@ export function checkItinerary(input: { dates: string[]; attractions: Attraction
 
   // Nights without a hotel (the last day has no night)
   if (hotels.length === 0) {
-    if (dates.length > 1) issues.push({ severity: 'info', date: '', message: 'No hotels added yet.', attractionIds: [] });
+    if (dates.length > 1) issues.push({ severity: 'info', date: '', message: 'No lodging added yet.', attractionIds: [] });
   } else {
     const covered = new Set(hotels.flatMap((h) => getHotelDates(h)));
     for (const date of dates.slice(0, -1)) {
       if (!covered.has(date)) {
-        issues.push({ severity: 'info', date, message: `No hotel assigned for the night of ${formatDay(date)}.`, attractionIds: [] });
+        issues.push({ severity: 'info', date, message: `No lodging assigned for the night of ${formatDay(date)}.`, attractionIds: [] });
       }
     }
   }

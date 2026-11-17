@@ -129,8 +129,8 @@ export default function GuidePanel({
                 </p>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   {placesEnabled
-                    ? 'I know your plans, hotels and weather, and can look up hours, ratings and prices on Google Maps and forecasts on Open-Meteo. Double-check before you go.'
-                    : 'I can see your days, hotels and weather, so my ideas fit what you’ve already planned. Double-check opening hours before you go.'}
+                    ? 'I know your plans, lodging and weather, and can look up hours, ratings and prices on Google Maps and forecasts on Open-Meteo. Double-check before you go.'
+                    : 'I can see your days, lodging and weather, so my ideas fit what you’ve already planned. Double-check opening hours before you go.'}
                 </p>
                 {!chatEnabled && (
                   <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">

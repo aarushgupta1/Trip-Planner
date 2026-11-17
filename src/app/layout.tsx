@@ -8,7 +8,7 @@ const plexMono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500'], var
 
 export const metadata: Metadata = {
   title: 'Trip Planner',
-  description: 'Plan a trip to anywhere — day-by-day itinerary, hotels, maps and weather.',
+  description: 'Plan a trip to anywhere — day-by-day itinerary, lodging, maps and weather.',
   // iOS ignores the manifest's icons/display fields for "Add to Home Screen"
   // — it only respects these tags (via Next's icons/appleWebApp metadata),
   // plus needs a PNG icon since it doesn't rasterize SVG apple-touch-icons.

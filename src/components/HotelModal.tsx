@@ -185,7 +185,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 sticky top-0 z-10 bg-white dark:bg-gray-900 rounded-t-2xl">
-          <h2 className="font-bold text-gray-900 dark:text-gray-100">{isEditing ? 'Edit Hotel' : 'Add Hotel'}</h2>
+          <h2 className="font-bold text-gray-900 dark:text-gray-100">{isEditing ? 'Edit lodging' : 'Add lodging'}</h2>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors rounded-full p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -229,7 +229,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
             <button
               onClick={handleSave}
               disabled={isPending || isDeleting || !form.name.trim() || !isOnline}
-              title={isEditing ? 'Save changes' : 'Add hotel'}
+              title={isEditing ? 'Save changes' : 'Add lodging'}
               className="shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors"
             >
               <Save size={16} />
@@ -239,7 +239,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
               <button
                 onClick={handleDelete}
                 disabled={isDeleting || isPending || !isOnline}
-                title="Delete hotel"
+                title="Delete lodging"
                 className="shrink-0 p-2.5 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-700 dark:hover:text-red-300 rounded-xl transition-colors disabled:opacity-40"
               >
                 <Trash2 size={18} />
@@ -276,7 +276,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
               onChange={(v) => setForm((f) => ({ ...f, location: v }))}
               disabled={!isOnline}
               className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-300 dark:placeholder-gray-600"
-              placeholder={`Hotel address (${cityNames})`}
+              placeholder={`Lodging address (${cityNames})`}
             />
           </div>
 

@@ -57,7 +57,7 @@ export function buildGuideContext(input: {
       .join(', ');
     lines.push(`## ${date} — ${cities}${w ? ` — ${w}` : ''}`);
     const stay = hotels.filter((h) => getHotelDates(h).includes(date)).map((h) => h.name);
-    if (stay.length) lines.push(`Hotel: ${stay.join(', ')}`);
+    if (stay.length) lines.push(`Lodging: ${stay.join(', ')}`);
     const day = attractions
       .filter((a) => a.scheduled_date === date)
       .sort((a, b) => (a.start_time ?? '99:99').localeCompare(b.start_time ?? '99:99'));
@@ -87,7 +87,7 @@ export function buildGuideSystemPrompt(context: string, opts: { lookupEnabled?: 
     '',
     'How to answer:',
     '- Be concise, warm and practical. A few short paragraphs at most; no headings.',
-    '- Use the trip data below: dates, cities, hotels, weather, opening hours and what is already booked. Prefer places in the trip\'s cities, near the hotel or the other events that day.',
+    '- Use the trip data below: dates, cities, lodging, weather, opening hours and what is already booked. Prefer places in the trip\'s cities, near the lodging or the other events that day.',
     opts.lookupEnabled
       ? '- You have a lookup_place tool that returns live facts from Google Maps: opening hours, whether a place is open right now, permanent or temporary closures, rating and price level. Use it (it costs money, so only when it matters, at most a few places per answer) before stating or suggesting opening hours, closures or whether something is open, and before recommending a specific place to add. Base what you say about hours, ratings and prices on the lookup result, not on memory. If a lookup finds nothing, say you could not confirm it. Put the looked-up hours into opening_hours / open_days in suggestions.'
       : '- Never claim to know exact current opening hours, prices or availability. Say hours should be double-checked, and only put opening_hours / open_days in a suggestion when you are confident they are typical.',

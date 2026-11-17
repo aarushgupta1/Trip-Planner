@@ -68,10 +68,10 @@ describe('checkItinerary', () => {
   });
   it('flags empty days and nights with no hotel', () => {
     const msgs = checkItinerary({ dates, attractions: [], hotels: [] }).map((i) => i.message);
-    expect(msgs).toContain('No hotels added yet.');
+    expect(msgs).toContain('No lodging added yet.');
     expect(msgs.filter((m) => m === 'Nothing planned yet.')).toHaveLength(2);
     const withHotel = checkItinerary({ dates: [...dates, '2026-08-08'], attractions: [], hotels: [hotel] }).map((i) => i.message);
-    expect(withHotel.some((m) => m.startsWith('No hotel assigned for the night of'))).toBe(true);
+    expect(withHotel.some((m) => m.startsWith('No lodging assigned for the night of'))).toBe(true);
   });
 });
 

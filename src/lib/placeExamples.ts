@@ -117,5 +117,5 @@ export function attractionPlaceholder(city: string): string {
 }
 
 export function hotelPlaceholder(city: string): string {
-  return city.trim() ? `e.g. A hotel in ${city.trim()}` : 'e.g. Hotel name';
+  return city.trim() ? `e.g. A place to stay in ${city.trim()}` : 'e.g. Hotel or Airbnb name';
 }
