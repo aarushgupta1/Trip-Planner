@@ -966,8 +966,9 @@ export default function CalendarBoard({
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-blue-600/40 text-blue-600 hover:bg-blue-600/10 text-xs font-semibold transition-colors"
                   title="Ask Aero: questions, ideas and an itinerary check"
                 >
-                  Ask Aero
+                  Ask
                   <Plane size={13} className="rotate-45" />
+                  Aero
                 </button>
                 {/* Jump to today — only relevant while the trip is actually underway */}
                 {now && TRIP_DATES.includes(now.date) && (
