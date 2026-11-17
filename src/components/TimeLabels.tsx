@@ -21,7 +21,8 @@ export default function TimeLabels({ widthPx = 64, hourly = null }: { widthPx?: 
       style={{ height: totalHeight, width: widthPx }}
     >
       {hours.map((hour, i) => {
-        const point = hourly?.find((p) => p.hour === hour);
+        // The first row has no visible time label, so it gets no weather either.
+        const point = i === 0 ? undefined : hourly?.find((p) => p.hour === hour);
         const info = point ? weatherCodeInfo(point.code) : null;
         const rain = point?.rain && point.rain.value > 0
           ? point.rain.kind === 'chance'
@@ -30,9 +31,7 @@ export default function TimeLabels({ widthPx = 64, hourly = null }: { widthPx?: 
           : '';
         return (
           <div key={hour} className="flex items-start pl-1.5 pr-2" style={{ height: PIXELS_PER_HOUR }}>
-            {/* The first row has no time label (it sits at the very top of the grid), so its
-                weather is nudged down a touch instead of centered on a line. */}
-            <div className={['flex w-full items-center', hourly ? '' : 'justify-end'].join(' ')} style={{ marginTop: i === 0 ? 2 : -6 }}>
+            <div className={['flex w-full items-center', hourly ? '' : 'justify-end'].join(' ')} style={{ marginTop: -6 }}>
               <span className="w-9 shrink-0 text-right text-[10px] font-medium leading-none text-gray-400 dark:text-gray-500">
                 {i !== 0 ? formatHour(hour) : ''}
               </span>
