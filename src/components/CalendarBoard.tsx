@@ -80,7 +80,7 @@ function DayHeader({
   hotels: Hotel[];
   onHotelClick: (hotel: Hotel) => void;
   onOpenMap: () => void;
-  onOpenHourly: () => void;
+  onOpenHourly: (city?: string) => void; // city = cityKey, when the day has several
   hourlyActive: boolean;
   hourlyLoading: boolean;
   dimmed: boolean; // another day's hourly weather is showing
@@ -89,6 +89,17 @@ function DayHeader({
 }) {
   const { weekday, monthDay } = formatDate(date);
   const [editing, setEditing] = useState(false);
+  // On a day spent in more than one place, "Hourly weather" first asks which.
+  const [choosingCity, setChoosingCity] = useState(false);
+  const chooserRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!choosingCity) return;
+    const close = (e: MouseEvent) => {
+      if (chooserRef.current && !chooserRef.current.contains(e.target as Node)) setChoosingCity(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [choosingCity]);
   // A day-trip day (e.g. a day trip) belongs to more than one city — everything
   // below renders one badge/weather-line per city rather than assuming a
   // single one.
@@ -162,20 +173,51 @@ function DayHeader({
           })}
         </div>
         {weather && weather.length > 0 && (
-          <button
-            onClick={onOpenHourly}
-            className={[
-              'mt-1 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold transition-colors',
-              hourlyActive
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40',
-            ].join(' ')}
-            title={hourlyActive ? 'Hide the hourly weather' : 'See the weather hour by hour'}
-            aria-pressed={hourlyActive}
-          >
-            <Clock size={9} />
-            {hourlyLoading ? 'Loading…' : hourlyActive ? 'Hide hourly weather' : 'Hourly weather'}
-          </button>
+          <div ref={chooserRef} className="relative mt-1 inline-block">
+            <button
+              onClick={() => {
+                if (hourlyActive) onOpenHourly(); // turns it off
+                else if (cities.length > 1) setChoosingCity((o) => !o);
+                else onOpenHourly(cities[0] ? cityKey(cities[0]) : undefined);
+              }}
+              className={[
+                'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold transition-colors',
+                hourlyActive
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40',
+              ].join(' ')}
+              title={hourlyActive ? 'Hide the hourly weather' : 'See the weather hour by hour'}
+              aria-pressed={hourlyActive}
+              aria-haspopup={cities.length > 1 && !hourlyActive ? 'menu' : undefined}
+            >
+              <Clock size={9} />
+              {hourlyLoading ? 'Loading…' : hourlyActive ? 'Hide hourly weather' : 'Hourly weather'}
+            </button>
+            {choosingCity && !hourlyActive && (
+              <div
+                role="menu"
+                className="absolute left-1/2 top-full z-30 mt-1 w-40 -translate-x-1/2 rounded-lg border border-gray-200 bg-white py-1 text-left shadow-lg dark:border-gray-700 dark:bg-gray-900"
+              >
+                <p className="px-2.5 pb-1 pt-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                  Hourly weather for
+                </p>
+                {cities.map((city) => (
+                  <button
+                    key={cityKey(city)}
+                    role="menuitem"
+                    onClick={() => {
+                      setChoosingCity(false);
+                      onOpenHourly(cityKey(city));
+                    }}
+                    className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-left text-[11px] font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                  >
+                    <span className={['h-1.5 w-1.5 shrink-0 rounded-full', cityColor(city).dot].join(' ')} />
+                    <span className="truncate">{city.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         )}
         {hotelsToday.length > 0 && (
           <div className="flex items-center justify-center gap-1 mt-1 flex-wrap px-0.5">
@@ -293,6 +335,8 @@ export default function CalendarBoard({
   // The day whose hourly weather is open (null = closed).
   const [hourlyDate, setHourlyDate] = useState<string | null>(null);
   const [hourly, setHourly] = useState<HourlyWeather[] | null>(null);
+  // Which city's hours are showing, when the day has more than one (a cityKey).
+  const [hourlyCity, setHourlyCity] = useState<string | null>(null);
   const hourlyRequest = useRef<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
   // An event Aero suggested, opened in the normal add-event form for review.
@@ -529,16 +573,18 @@ export default function CalendarBoard({
   };
 
   // Same button turns hourly weather on for a day and off again.
-  const toggleHourly = (date: string) => {
+  const toggleHourly = (date: string, city?: string) => {
     if (hourlyDate === date) {
       hourlyRequest.current = null;
       setHourlyDate(null);
       setHourly(null);
+      setHourlyCity(null);
       return;
     }
     hourlyRequest.current = date;
     setHourlyDate(date);
     setHourly(null);
+    setHourlyCity(city ?? null);
     const giveUp = (message: string) => {
       if (hourlyRequest.current !== date) return; // the choice changed meanwhile
       hourlyRequest.current = null;
@@ -549,6 +595,7 @@ export default function CalendarBoard({
       .then((data) => {
         if (hourlyRequest.current !== date) return;
         if (data.length === 0) giveUp('No hourly weather is available for that day yet.');
+        else if (city && !data.some((d) => d.city === city)) giveUp(`No hourly weather is available for ${city.split('|')[0]} yet.`);
         else setHourly(data);
       })
       .catch(() => giveUp("Couldn't load the hourly weather — try again in a moment."));
@@ -568,6 +615,7 @@ export default function CalendarBoard({
   // other days fade back. Only counts while that day is on screen.
   const hourlyVisible = !!hourlyDate && visibleDates.includes(hourlyDate);
   const hourlyShown = hourlyVisible && !!hourly;
+  const activeHourly = hourly?.find((h) => h.city === hourlyCity) ?? hourly?.[0] ?? null;
   const labelWidthPx = hourlyShown ? TIME_LABELS_HOURLY_PX : TIME_LABELS_PX;
 
   // Keep colWidth in sync with the actual rendered column width
@@ -922,10 +970,24 @@ export default function CalendarBoard({
                 className="shrink-0 border-r border-gray-100 dark:border-gray-800 flex flex-col items-center justify-end pb-1.5 text-center transition-[width] duration-200"
                 style={{ width: labelWidthPx }}
               >
-                {hourlyShown && hourly && hourly[0] && (
+                {hourlyShown && hourly && activeHourly && (
                   <>
-                    <span className="max-w-full truncate px-1 text-[9px] font-semibold text-blue-600 dark:text-blue-400">{hourly[0].cityName}</span>
-                    <span className="text-[9px] text-gray-400 dark:text-gray-500">{hourlyKindShort(hourly[0].kind)}</span>
+                    {hourly.length > 1 ? (
+                      // More than one place that day: switch between them here.
+                      <select
+                        value={activeHourly.city}
+                        onChange={(e) => setHourlyCity(e.target.value)}
+                        aria-label="Which city's hourly weather"
+                        className="w-[92%] truncate rounded border border-blue-200 bg-white px-0.5 py-0.5 text-[9px] font-semibold text-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-blue-800 dark:bg-gray-900 dark:text-blue-400"
+                      >
+                        {hourly.map((h) => (
+                          <option key={h.city} value={h.city}>{h.cityName}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="max-w-full truncate px-1 text-[9px] font-semibold text-blue-600 dark:text-blue-400">{activeHourly.cityName}</span>
+                    )}
+                    <span className="text-[9px] text-gray-400 dark:text-gray-500">{hourlyKindShort(activeHourly.kind)}</span>
                   </>
                 )}
               </div>
@@ -940,7 +1002,7 @@ export default function CalendarBoard({
                   hotels={hotels}
                   onHotelClick={(hotel) => setHotelModalState({ mode: 'edit', hotel })}
                   onOpenMap={() => setMapDate(date)}
-                  onOpenHourly={() => toggleHourly(date)}
+                  onOpenHourly={(city) => toggleHourly(date, city)}
                   hourlyActive={hourlyVisible && hourlyDate === date}
                   hourlyLoading={hourlyVisible && hourlyDate === date && !hourly}
                   dimmed={hourlyVisible && hourlyDate !== date}
@@ -954,7 +1016,7 @@ export default function CalendarBoard({
 
             {/* Anytime-zone spacer in time-label column + scrollable grid */}
             <div ref={scrollRef} className="flex flex-1 overflow-y-auto overflow-x-hidden">
-              <TimeLabels widthPx={labelWidthPx} hourly={hourlyShown ? (hourly?.[0]?.hours ?? null) : null} />
+              <TimeLabels widthPx={labelWidthPx} hourly={hourlyShown ? (activeHourly?.hours ?? null) : null} />
               {visibleDates.map((date) => (
                 <DayColumn
                   key={date}

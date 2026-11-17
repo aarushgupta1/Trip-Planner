@@ -380,7 +380,7 @@ export default function TripForm({
               Plan this trip with others
             </span>
             <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
-              Get an invite link as soon as the trip is created. You can also do this later.
+              Get an invite link as soon as the trip is created.
             </span>
           </span>
         </label>
