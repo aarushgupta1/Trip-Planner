@@ -24,13 +24,23 @@ interface CreateModalProps {
   // the event untimed until the user picks a time themselves.
   date?: string;
   startTime?: string;
+  // Pre-filled fields, e.g. when adding something the trip guide suggested.
+  prefill?: Partial<{
+    name: string;
+    description: string;
+    category: Category;
+    end_time: string;
+    location: string;
+    opening_hours: string;
+    open_days: string;
+  }>;
   allAttractions: Attraction[];
   hotels: Hotel[];
   onClose: () => void;
   onCreated: (attraction: Attraction) => void;
 }
 
-export default function CreateModal({ date, startTime, allAttractions, hotels, onClose, onCreated }: CreateModalProps) {
+export default function CreateModal({ date, startTime, prefill, allAttractions, hotels, onClose, onCreated }: CreateModalProps) {
   const { trip, dates: tripDates, getCityForDate, cityNames, homeZoneLabel } = useTrip();
   const today = getNowInZone(trip.timezone).date;
   const defaultDate = date ?? (tripDates.includes(today) ? today : tripDates[0]);
@@ -40,15 +50,15 @@ export default function CreateModal({ date, startTime, allAttractions, hotels, o
     : '';
 
   const initialForm = {
-    name: '',
-    description: '',
-    category: 'other' as Category,
+    name: prefill?.name ?? '',
+    description: prefill?.description ?? '',
+    category: (prefill?.category ?? 'other') as Category,
     scheduled_date: defaultDate,
     start_time: defaultStartTime,
-    end_time: defaultEndTime,
-    location: '',
-    opening_hours: '',
-    open_days: '',
+    end_time: prefill?.end_time || defaultEndTime,
+    location: prefill?.location ?? '',
+    opening_hours: prefill?.opening_hours ?? '',
+    open_days: prefill?.open_days ?? '',
     departure_timezone: 'local' as CalendarTimezone,
     arrival_timezone: 'local' as CalendarTimezone,
   };

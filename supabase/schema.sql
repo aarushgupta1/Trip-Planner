@@ -549,6 +549,42 @@ $$;
 revoke all on function public.join_trip(text) from public, anon;
 grant execute on function public.join_trip(text) to authenticated;
 
+-- ---- AI guide usage limit ----
+-- One counter per user per (UTC) day, so a runaway client can't run up the
+-- AI bill. No RLS policies on purpose: the table is only reachable through
+-- the function below.
+create table if not exists guide_usage (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  day     date not null default (now() at time zone 'utc')::date,
+  count   integer not null default 0,
+  primary key (user_id, day)
+);
+alter table guide_usage enable row level security;
+
+-- Counts one guide request; returns false (and counts nothing) once the
+-- caller has used p_limit requests today.
+create or replace function public.bump_guide_usage(p_limit integer)
+returns boolean
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  c integer;
+begin
+  if auth.uid() is null then
+    return false;
+  end if;
+  insert into guide_usage (user_id, day, count)
+  values (auth.uid(), (now() at time zone 'utc')::date, 1)
+  on conflict (user_id, day) do update set count = guide_usage.count + 1
+    where guide_usage.count < p_limit
+  returning count into c;
+  return c is not null;
+end;
+$$;
+revoke all on function public.bump_guide_usage(integer) from public, anon;
+grant execute on function public.bump_guide_usage(integer) to authenticated;
+
 -- Realtime for the new trip tables isn't needed (they only change from the
 -- trips screens); attractions/hotels/day_notes stay published above.
 

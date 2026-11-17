@@ -44,10 +44,12 @@ import HotelModal from './HotelModal';
 import AttractionBlock from './AttractionBlock';
 import EditModal from './EditModal';
 import CreateModal from './CreateModal';
+import GuidePanel from './GuidePanel';
+import type { GuideSuggestion } from '@/lib/guide';
 import SearchJumpBox from './SearchJumpBox';
 import MoreMenu from './MoreMenu';
 import TimeLabels from './TimeLabels';
-import { ChevronLeft, ChevronRight, Pencil, PanelLeftOpen, WifiOff, CalendarDays, Plus, Search, ArrowRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, PanelLeftOpen, WifiOff, CalendarDays, Plus, Search, ArrowRight, Sparkles } from 'lucide-react';
 
 // Leaflet touches `window`/`document` at import time, so it can only ever
 // load on the client — ssr: false keeps it (and its CSS) out of the server
@@ -215,7 +217,9 @@ export default function CalendarBoard({
   travelSegments,
   initialDayNotes,
   initialHotels,
+  guideEnabled,
 }: {
+  guideEnabled: boolean;
   initialAttractions: Attraction[];
   weather: Record<string, DayWeather[]>;
   travelSegments: Record<string, TravelSegment>;
@@ -236,6 +240,9 @@ export default function CalendarBoard({
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+  // An event the trip guide suggested, opened in the normal add-event form for review.
+  const [guideSuggestion, setGuideSuggestion] = useState<GuideSuggestion | null>(null);
   const [colWidth, setColWidth] = useState(200);
   // Doubles as both the drag/resize conflict notice and a generic error toast
   // for failed writes (move, resize, check, day note) — same transient banner.
@@ -841,6 +848,14 @@ export default function CalendarBoard({
               </div>
 
               <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setShowGuide((v) => !v)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#c8553d]/40 text-[#c8553d] hover:bg-[#c8553d]/10 text-xs font-semibold transition-colors"
+                  title="Trip guide: ask questions and check your itinerary"
+                >
+                  <Sparkles size={13} />
+                  <span className="hidden sm:inline">Guide</span>
+                </button>
                 {/* Add event — opens the same modal a grid click would, just without
                     a slot pre-picked (defaults to today/untimed, editable inside) */}
                 <button
@@ -972,17 +987,31 @@ export default function CalendarBoard({
         />
       )}
 
-      {(createSlot || showQuickAdd) && (
+      {showGuide && (
+        <GuidePanel
+          tripId={trip.id}
+          chatEnabled={guideEnabled}
+          attractions={attractions}
+          hotels={hotels}
+          onAddSuggestion={setGuideSuggestion}
+          onJumpToDate={(date) => setCurrentPage(pageForDate(TRIP_DATES, date, daysPerPage))}
+          onClose={() => setShowGuide(false)}
+        />
+      )}
+
+      {(createSlot || showQuickAdd || guideSuggestion) && (
         <CreateModal
-          date={createSlot?.date}
-          startTime={createSlot?.time}
+          date={createSlot?.date ?? guideSuggestion?.date}
+          startTime={createSlot?.time ?? (guideSuggestion?.start_time || undefined)}
+          prefill={guideSuggestion ?? undefined}
           allAttractions={attractions}
           hotels={hotels}
-          onClose={() => { setCreateSlot(null); setShowQuickAdd(false); }}
+          onClose={() => { setCreateSlot(null); setShowQuickAdd(false); setGuideSuggestion(null); }}
           onCreated={(attraction) => {
             handleAttractionCreated(attraction);
             setCreateSlot(null);
             setShowQuickAdd(false);
+            setGuideSuggestion(null);
           }}
         />
       )}

@@ -15,6 +15,7 @@ import { formatCityList } from '@/lib/trip';
 import { formatDateRange } from '@/lib/utils';
 import { getWeatherForDates } from '@/lib/weather';
 import { getTravelSegments } from '@/lib/travel';
+import { isGuideEnabled } from '@/app/guide/actions';
 
 export async function generateMetadata({ params }: { params: Promise<{ tripId: string }> }) {
   const { tripId } = await params;
@@ -99,6 +100,7 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
           travelSegments={travelSegments}
           initialDayNotes={dayNotes}
           initialHotels={hotels}
+          guideEnabled={await isGuideEnabled()}
         />
       </div>
     </main>

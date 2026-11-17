@@ -16,6 +16,7 @@ export default function CalendarBoardClient(props: {
   travelSegments: Record<string, TravelSegment>;
   initialDayNotes: Record<string, string>;
   initialHotels: Hotel[];
+  guideEnabled: boolean;
 }) {
   const { trip, ...rest } = props;
   return (
