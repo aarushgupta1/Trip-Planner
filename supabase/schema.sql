@@ -561,29 +561,61 @@ create table if not exists guide_usage (
 );
 alter table guide_usage enable row level security;
 
--- Counts one guide request; returns false (and counts nothing) once the
--- caller has used p_limit requests today.
-create or replace function public.bump_guide_usage(p_limit integer)
-returns boolean
+-- A single counter for everyone together: a ceiling on total daily spend even
+-- if someone makes many accounts to get around the per-person limit.
+create table if not exists guide_usage_global (
+  day   date primary key default (now() at time zone 'utc')::date,
+  count integer not null default 0
+);
+alter table guide_usage_global enable row level security;
+
+-- Counts one guide request. Returns 'ok', or says which limit was hit
+-- ('global_limit' = everyone's daily total, 'user_limit' = this person's)
+-- and counts nothing in that case. p_global_limit null = no global cap.
+-- (The first version of this function took only p_limit and returned a
+-- boolean, hence the drop.)
+drop function if exists public.bump_guide_usage(integer);
+create or replace function public.bump_guide_usage(p_limit integer, p_global_limit integer default null)
+returns text
 language plpgsql security definer
 set search_path = public
 as $$
 declare
-  c integer;
+  today date := (now() at time zone 'utc')::date;
+  g integer;
+  u integer;
 begin
   if auth.uid() is null then
-    return false;
+    return 'user_limit';
   end if;
-  insert into guide_usage (user_id, day, count)
-  values (auth.uid(), (now() at time zone 'utc')::date, 1)
+
+  if p_global_limit is not null then
+    insert into guide_usage_global (day, count) values (today, 1)
+    on conflict (day) do update set count = guide_usage_global.count + 1
+      where guide_usage_global.count < p_global_limit
+    returning count into g;
+    if g is null then
+      return 'global_limit';
+    end if;
+  end if;
+
+  insert into guide_usage (user_id, day, count) values (auth.uid(), today, 1)
   on conflict (user_id, day) do update set count = guide_usage.count + 1
     where guide_usage.count < p_limit
-  returning count into c;
-  return c is not null;
+  returning count into u;
+  if u is null then
+    -- This person is over their own limit: give back the global slot taken above.
+    if p_global_limit is not null then
+      update guide_usage_global set count = count - 1 where day = today;
+    end if;
+    return 'user_limit';
+  end if;
+
+  return 'ok';
 end;
 $$;
-revoke all on function public.bump_guide_usage(integer) from public, anon;
-grant execute on function public.bump_guide_usage(integer) to authenticated;
+revoke all on function public.bump_guide_usage(integer, integer) from public, anon;
+grant execute on function public.bump_guide_usage(integer, integer) to authenticated;
 
 -- Realtime for the new trip tables isn't needed (they only change from the
 -- trips screens); attractions/hotels/day_notes stay published above.

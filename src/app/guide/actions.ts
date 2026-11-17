@@ -20,6 +20,8 @@ import {
 
 const DEFAULT_MODEL = 'claude-haiku-5-5';
 const DEFAULT_DAILY_LIMIT = 40;
+// Everyone combined, per UTC day — a ceiling on total spend. Tunable per deployment.
+const DEFAULT_GLOBAL_DAILY_LIMIT = 300;
 const MAX_OUTPUT_TOKENS = 2000;
 // Live lookups cost real money, so each answer is capped. Tunable per deployment.
 const DEFAULT_MAX_LOOKUPS = 3;
@@ -48,9 +50,16 @@ export async function askGuide(tripId: string, rawMessages: GuideMessage[]): Pro
 
   const supabase = await createSupabaseServer();
   const limit = Number(process.env.GUIDE_DAILY_LIMIT) || DEFAULT_DAILY_LIMIT;
-  const { data: allowed, error: limitError } = await supabase.rpc('bump_guide_usage', { p_limit: limit });
+  const globalLimit = Number(process.env.GUIDE_GLOBAL_DAILY_LIMIT) || DEFAULT_GLOBAL_DAILY_LIMIT;
+  const { data: usage, error: limitError } = await supabase.rpc('bump_guide_usage', {
+    p_limit: limit,
+    p_global_limit: globalLimit,
+  });
   if (limitError) return { error: 'Aero is unavailable right now.' };
-  if (!allowed) return { error: `You've reached today's limit of ${limit} questions to Aero. It resets tomorrow (UTC).` };
+  if (usage === 'global_limit') {
+    return { error: 'Aero has hit its daily limit across all users and is resting until tomorrow (UTC). The rest of the app still works.' };
+  }
+  if (usage !== 'ok') return { error: `You've reached today's limit of ${limit} questions to Aero. It resets tomorrow (UTC).` };
 
   const dates = generateTripDates(trip);
   const [attractions, hotels, dayNotes, weather] = await Promise.all([
