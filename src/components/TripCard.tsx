@@ -13,12 +13,16 @@ export default function TripCard({
   cities,
   dateRange,
   status,
+  isOwner,
+  ownerLabel,
 }: {
   id: string;
   name: string;
   cities: string;
   dateRange: string;
   status: { label: string; tone: 'live' | 'soon' | 'past' };
+  isOwner: boolean;
+  ownerLabel?: string;
 }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
@@ -44,7 +48,7 @@ export default function TripCard({
 
   return (
     <div className={['group relative rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow', isPending ? 'opacity-50' : ''].join(' ')}>
-      <Link href={`/trips/${id}`} className="block p-5 pr-20">
+      <Link href={`/trips/${id}`} className={['block p-5', isOwner ? 'pr-20' : ''].join(' ')}>
         <span className={['inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide mb-2', toneClass].join(' ')}>
           {status.label}
         </span>
@@ -54,9 +58,10 @@ export default function TripCard({
           <span className="truncate">{cities}</span>
         </p>
         <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{dateRange}</p>
+        {!isOwner && <p className="mt-1.5 text-[11px] font-medium text-blue-600 dark:text-blue-400">Shared with you{ownerLabel ? ` by ${ownerLabel}` : ''}</p>}
       </Link>
 
-      <div className="absolute top-3 right-3 flex items-center gap-0.5">
+      {isOwner && <div className="absolute top-3 right-3 flex items-center gap-0.5">
         <Link
           href={`/trips/${id}/edit`}
           title="Edit trip"
@@ -71,7 +76,7 @@ export default function TripCard({
         >
           <Trash2 size={15} />
         </button>
-      </div>
+      </div>}
 
       {error && <p className="px-5 pb-3 text-xs text-red-500 dark:text-red-400 font-medium">{error}</p>}
 

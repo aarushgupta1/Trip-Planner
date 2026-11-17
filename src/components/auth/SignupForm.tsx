@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MailCheck } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
+import { withNext } from '@/lib/safeNext';
 import { authInputClass, authLabelClass } from './AuthShell';
 
 const MIN_PASSWORD_LENGTH = 8;
 
-export default function SignupForm() {
+export default function SignupForm({ next = '/' }: { next?: string }) {
   const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -41,7 +42,7 @@ export default function SignupForm() {
       password,
       options: {
         data: { full_name: name.trim() },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
     if (signUpError) {
@@ -56,7 +57,7 @@ export default function SignupForm() {
       setLoading(false);
       return;
     }
-    router.replace('/');
+    router.replace(next);
     router.refresh();
   };
 
@@ -70,7 +71,7 @@ export default function SignupForm() {
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           We sent a confirmation link to <span className="font-medium">{email.trim()}</span>. Open it to finish
           creating your account, then{' '}
-          <Link href="/login" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">sign in</Link>.
+          <Link href={withNext('/login', next)} className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">sign in</Link>.
         </p>
       </div>
     );

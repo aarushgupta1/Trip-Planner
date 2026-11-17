@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import TripForm from '@/components/TripForm';
 import { getTrip } from '@/app/trips/actions';
@@ -11,6 +11,8 @@ export default async function EditTripPage({ params }: { params: Promise<{ tripI
   const { tripId } = await params;
   const trip = await getTrip(tripId);
   if (!trip) notFound();
+  // Invited members can plan events but not change the trip itself.
+  if (!trip.is_owner) redirect(`/trips/${tripId}`);
 
   const initial: TripInput = {
     name: trip.name,

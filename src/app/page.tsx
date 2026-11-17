@@ -37,6 +37,7 @@ export default async function DashboardPage() {
       cities={formatCityList(t.cities)}
       dateRange={formatDateRange(t.start_date, t.end_date)}
       status={tripStatus(t.start_date, t.end_date, today)}
+      isOwner={t.is_owner}
     />
   );
 

@@ -349,7 +349,7 @@ alter table day_notes add primary key (trip_id, date);
 -- Which device(s) to notify belongs to a user now, not to everyone.
 alter table push_subscriptions add column if not exists user_id uuid references auth.users(id) on delete cascade;
 
--- ---- Row Level Security: each user only ever sees their own trips ----
+-- ---- Row Level Security: you see trips you own or were invited to ----
 
 create or replace function public.is_trip_owner(p_trip uuid)
 returns boolean
@@ -359,15 +359,69 @@ as $$
   select exists (select 1 from trips where id = p_trip and owner_id = auth.uid());
 $$;
 
+-- Invited people ("members") can see and edit a trip's events, hotels and
+-- notes, but only the owner can change the trip itself, share it or delete it.
+create table if not exists trip_members (
+  trip_id    uuid not null references trips(id) on delete cascade,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz default now(),
+  primary key (trip_id, user_id)
+);
+create index if not exists trip_members_user_id_idx on trip_members (user_id);
+
+-- One shareable link per trip (anyone signed in who opens it joins).
+create table if not exists trip_invites (
+  token      text primary key default replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''),
+  trip_id    uuid not null references trips(id) on delete cascade,
+  created_at timestamptz default now()
+);
+create unique index if not exists trip_invites_trip_id_idx on trip_invites (trip_id);
+
+create or replace function public.is_trip_member(p_trip uuid)
+returns boolean
+language sql stable security definer
+set search_path = public
+as $$
+  select exists (select 1 from trips where id = p_trip and owner_id = auth.uid())
+      or exists (select 1 from trip_members where trip_id = p_trip and user_id = auth.uid());
+$$;
+
 alter table trips enable row level security;
 alter table trip_cities enable row level security;
+alter table trip_members enable row level security;
+alter table trip_invites enable row level security;
 
 drop policy if exists "owner_all" on trips;
-create policy "owner_all" on trips for all to authenticated
+drop policy if exists "member_select" on trips;
+drop policy if exists "owner_insert" on trips;
+drop policy if exists "owner_update" on trips;
+drop policy if exists "owner_delete" on trips;
+create policy "member_select" on trips for select to authenticated
+  using (owner_id = auth.uid() or public.is_trip_member(id));
+create policy "owner_insert" on trips for insert to authenticated with check (owner_id = auth.uid());
+create policy "owner_update" on trips for update to authenticated
   using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+create policy "owner_delete" on trips for delete to authenticated using (owner_id = auth.uid());
 
 drop policy if exists "owner_all" on trip_cities;
-create policy "owner_all" on trip_cities for all to authenticated
+drop policy if exists "member_select" on trip_cities;
+drop policy if exists "owner_write" on trip_cities;
+create policy "member_select" on trip_cities for select to authenticated
+  using (public.is_trip_member(trip_id));
+create policy "owner_write" on trip_cities for all to authenticated
+  using (public.is_trip_owner(trip_id)) with check (public.is_trip_owner(trip_id));
+
+-- Members are listed for everyone on the trip; the owner can remove anyone,
+-- and anyone can remove themselves (leave). Joining goes through join_trip().
+drop policy if exists "member_select" on trip_members;
+drop policy if exists "owner_or_self_delete" on trip_members;
+create policy "member_select" on trip_members for select to authenticated
+  using (public.is_trip_member(trip_id));
+create policy "owner_or_self_delete" on trip_members for delete to authenticated
+  using (public.is_trip_owner(trip_id) or user_id = auth.uid());
+
+drop policy if exists "owner_all" on trip_invites;
+create policy "owner_all" on trip_invites for all to authenticated
   using (public.is_trip_owner(trip_id)) with check (public.is_trip_owner(trip_id));
 
 -- Replace the old open policies on the trip-scoped tables.
@@ -376,24 +430,27 @@ drop policy if exists "public_insert" on attractions;
 drop policy if exists "public_update" on attractions;
 drop policy if exists "public_delete" on attractions;
 drop policy if exists "owner_all" on attractions;
-create policy "owner_all" on attractions for all to authenticated
-  using (public.is_trip_owner(trip_id)) with check (public.is_trip_owner(trip_id));
+drop policy if exists "member_all" on attractions;
+create policy "member_all" on attractions for all to authenticated
+  using (public.is_trip_member(trip_id)) with check (public.is_trip_member(trip_id));
 
 drop policy if exists "public_select" on hotels;
 drop policy if exists "public_insert" on hotels;
 drop policy if exists "public_update" on hotels;
 drop policy if exists "public_delete" on hotels;
 drop policy if exists "owner_all" on hotels;
-create policy "owner_all" on hotels for all to authenticated
-  using (public.is_trip_owner(trip_id)) with check (public.is_trip_owner(trip_id));
+drop policy if exists "member_all" on hotels;
+create policy "member_all" on hotels for all to authenticated
+  using (public.is_trip_member(trip_id)) with check (public.is_trip_member(trip_id));
 
 drop policy if exists "public_select" on day_notes;
 drop policy if exists "public_insert" on day_notes;
 drop policy if exists "public_update" on day_notes;
 drop policy if exists "public_delete" on day_notes;
 drop policy if exists "owner_all" on day_notes;
-create policy "owner_all" on day_notes for all to authenticated
-  using (public.is_trip_owner(trip_id)) with check (public.is_trip_owner(trip_id));
+drop policy if exists "member_all" on day_notes;
+create policy "member_all" on day_notes for all to authenticated
+  using (public.is_trip_member(trip_id)) with check (public.is_trip_member(trip_id));
 
 -- Reminder bookkeeping follows the attraction it belongs to. (The reminder
 -- endpoint itself uses the service-role key, which bypasses RLS.)
@@ -401,9 +458,10 @@ drop policy if exists "public_select" on event_reminders_sent;
 drop policy if exists "public_insert" on event_reminders_sent;
 drop policy if exists "public_delete" on event_reminders_sent;
 drop policy if exists "owner_all" on event_reminders_sent;
-create policy "owner_all" on event_reminders_sent for all to authenticated
-  using (exists (select 1 from attractions a where a.id = attraction_id and public.is_trip_owner(a.trip_id)))
-  with check (exists (select 1 from attractions a where a.id = attraction_id and public.is_trip_owner(a.trip_id)));
+drop policy if exists "member_all" on event_reminders_sent;
+create policy "member_all" on event_reminders_sent for all to authenticated
+  using (exists (select 1 from attractions a where a.id = attraction_id and public.is_trip_member(a.trip_id)))
+  with check (exists (select 1 from attractions a where a.id = attraction_id and public.is_trip_member(a.trip_id)));
 
 -- Push subscriptions: a user only sees/removes their own devices.
 drop policy if exists "public_select" on push_subscriptions;
@@ -429,6 +487,67 @@ as $$
 $$;
 revoke all on function public.save_push_subscription(text, text, text) from public, anon;
 grant execute on function public.save_push_subscription(text, text, text) to authenticated;
+
+-- ---- Sharing helpers ----
+
+-- Names of everyone on a trip (owner + members). Names live in auth, which
+-- the app can't read directly, so this returns just id + display name (never
+-- emails) and only to people already on the trip.
+create or replace function public.get_trip_people(p_trip uuid)
+returns table (user_id uuid, display_name text, is_owner boolean)
+language sql stable security definer
+set search_path = public, auth
+as $$
+  select u.id,
+         coalesce(nullif(trim(u.raw_user_meta_data->>'full_name'), ''), split_part(u.email, '@', 1)),
+         (t.owner_id = u.id)
+  from trips t
+  join auth.users u on u.id = t.owner_id
+    or u.id in (select m.user_id from trip_members m where m.trip_id = t.id)
+  where t.id = p_trip and public.is_trip_member(p_trip)
+  order by (t.owner_id = u.id) desc, 2;
+$$;
+revoke all on function public.get_trip_people(uuid) from public, anon;
+grant execute on function public.get_trip_people(uuid) to authenticated;
+
+-- What the invite page shows before someone accepts.
+create or replace function public.preview_invite(p_token text)
+returns table (trip_name text, owner_name text, already_member boolean)
+language sql stable security definer
+set search_path = public, auth
+as $$
+  select t.name,
+         coalesce(nullif(trim(o.raw_user_meta_data->>'full_name'), ''), split_part(o.email, '@', 1), 'Someone'),
+         public.is_trip_member(t.id)
+  from trip_invites i
+  join trips t on t.id = i.trip_id
+  left join auth.users o on o.id = t.owner_id
+  where i.token = p_token;
+$$;
+revoke all on function public.preview_invite(text) from public, anon;
+grant execute on function public.preview_invite(text) to authenticated;
+
+-- Accepting an invite: adds the caller to the trip, returns the trip id
+-- (null if the link is no longer valid).
+create or replace function public.join_trip(p_token text)
+returns uuid
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  tid uuid;
+begin
+  select trip_id into tid from trip_invites where token = p_token;
+  if tid is null or auth.uid() is null then
+    return null;
+  end if;
+  insert into trip_members (trip_id, user_id) values (tid, auth.uid())
+  on conflict do nothing;
+  return tid;
+end;
+$$;
+revoke all on function public.join_trip(text) from public, anon;
+grant execute on function public.join_trip(text) to authenticated;
 
 -- Realtime for the new trip tables isn't needed (they only change from the
 -- trips screens); attractions/hotels/day_notes stay published above.

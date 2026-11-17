@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import AuthShell from '@/components/auth/AuthShell';
 import LoginForm from '@/components/auth/LoginForm';
+import { safeNext, withNext } from '@/lib/safeNext';
 
 export const metadata = { title: 'Sign in · Trip Planner' };
 
@@ -11,7 +12,7 @@ export default async function LoginPage({
 }) {
   const { next, error } = await searchParams;
   // Only ever redirect to a path on this site after signing in.
-  const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+  const target = safeNext(next);
   return (
     <AuthShell
       title="Welcome back"
@@ -19,14 +20,14 @@ export default async function LoginPage({
       footer={
         <>
           New here?{' '}
-          <Link href="/signup" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+          <Link href={withNext('/signup', target)} className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">
             Create an account
           </Link>
         </>
       }
     >
       <LoginForm
-        next={safeNext}
+        next={target}
         initialError={error === 'link' ? 'That link has expired or was already used. Please sign in or request a new one.' : undefined}
       />
     </AuthShell>

@@ -53,14 +53,20 @@ export async function searchCities(query: string): Promise<CitySuggestion[]> {
   }
 }
 
-type TripRow = { id: string; name: string; start_date: string; end_date: string; timezone: string; home_timezone: string };
+type TripRow = { id: string; owner_id: string | null; name: string; start_date: string; end_date: string; timezone: string; home_timezone: string };
+const TRIP_COLUMNS = 'id, owner_id, name, start_date, end_date, timezone, home_timezone';
 
-export async function getTrips(): Promise<Trip[]> {
+// A trip plus whether the signed-in user owns it (as opposed to having been
+// invited). Only owners can edit trip settings, share or delete.
+export type SharedTrip = Trip & { is_owner: boolean };
+
+export async function getTrips(): Promise<SharedTrip[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createSupabaseServer();
+  const { data: auth } = await supabase.auth.getUser();
   const { data: rows, error } = await supabase
     .from('trips')
-    .select('id, name, start_date, end_date, timezone, home_timezone')
+    .select(TRIP_COLUMNS)
     .order('start_date', { ascending: true });
   if (error) throw new Error(error.message);
   if (!rows || rows.length === 0) return [];
@@ -71,24 +77,29 @@ export async function getTrips(): Promise<Trip[]> {
     .in('trip_id', rows.map((r) => r.id));
   if (citiesError) throw new Error(citiesError.message);
 
-  return (rows as TripRow[]).map((row) =>
-    toTrip(row, ((cities ?? []) as (TripCity & { trip_id: string })[]).filter((c) => c.trip_id === row.id))
-  );
+  return (rows as TripRow[]).map((row) => ({
+    ...toTrip(row, ((cities ?? []) as (TripCity & { trip_id: string })[]).filter((c) => c.trip_id === row.id)),
+    is_owner: row.owner_id === auth.user?.id,
+  }));
 }
 
 // null when the trip doesn't exist *or* isn't yours (RLS makes those look
 // identical, which is what we want).
-export async function getTrip(id: string): Promise<Trip | null> {
+export async function getTrip(id: string): Promise<SharedTrip | null> {
   if (!isSupabaseConfigured()) return null;
   const supabase = await createSupabaseServer();
+  const { data: auth } = await supabase.auth.getUser();
   const { data: row } = await supabase
     .from('trips')
-    .select('id, name, start_date, end_date, timezone, home_timezone')
+    .select(TRIP_COLUMNS)
     .eq('id', id)
     .maybeSingle();
   if (!row) return null;
   const { data: cities } = await supabase.from('trip_cities').select('*').eq('trip_id', id);
-  return toTrip(row as TripRow, (cities ?? []) as TripCity[]);
+  return {
+    ...toTrip(row as TripRow, (cities ?? []) as TripCity[]),
+    is_owner: (row as TripRow).owner_id === auth.user?.id,
+  };
 }
 
 function cityRows(tripId: string, input: TripInput) {
@@ -157,7 +168,7 @@ export async function updateTrip(id: string, input: TripInput): Promise<{ ok: tr
   if (problem) return { error: problem };
 
   const supabase = await createSupabaseServer();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('trips')
     .update({
       name: input.name.trim(),
@@ -166,8 +177,12 @@ export async function updateTrip(id: string, input: TripInput): Promise<{ ok: tr
       timezone: primaryTimezone(input),
       home_timezone: input.home_timezone,
     })
-    .eq('id', id);
+    .eq('id', id)
+    .select('id');
   if (error) return { error: error.message };
+  // Row Level Security lets only the owner update, and reports anyone else as
+  // "0 rows changed" rather than an error.
+  if (!updated || updated.length === 0) return { error: 'Only the trip owner can change trip settings.' };
 
   // Replace the stops. Not atomic over the API, so keep the old rows to put
   // back if the new ones fail to save — a trip should never end up with none.
@@ -187,8 +202,86 @@ export async function updateTrip(id: string, input: TripInput): Promise<{ ok: tr
 
 export async function deleteTrip(id: string): Promise<{ ok: true } | { error: string }> {
   const supabase = await createSupabaseServer();
-  const { error } = await supabase.from('trips').delete().eq('id', id);
+  const { data: deleted, error } = await supabase.from('trips').delete().eq('id', id).select('id');
   if (error) return { error: error.message };
+  if (!deleted || deleted.length === 0) return { error: 'Only the trip owner can delete this trip.' };
   revalidatePath('/');
   return { ok: true };
+}
+
+// ---- Sharing ----
+
+export interface TripPerson {
+  user_id: string;
+  display_name: string;
+  is_owner: boolean;
+}
+
+export async function getTripPeople(tripId: string): Promise<TripPerson[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createSupabaseServer();
+  const { data } = await supabase.rpc('get_trip_people', { p_trip: tripId });
+  return (data ?? []) as TripPerson[];
+}
+
+// The current invite token, or null if the trip has no active link (owner only).
+export async function getInviteToken(tripId: string): Promise<string | null> {
+  const supabase = await createSupabaseServer();
+  const { data } = await supabase.from('trip_invites').select('token').eq('trip_id', tripId).maybeSingle();
+  return (data?.token as string | undefined) ?? null;
+}
+
+// Makes a fresh link, which also invalidates any previous one.
+export async function createInvite(tripId: string): Promise<{ token: string } | { error: string }> {
+  const supabase = await createSupabaseServer();
+  const { error: deleteError } = await supabase.from('trip_invites').delete().eq('trip_id', tripId);
+  if (deleteError) return { error: deleteError.message };
+  const { data, error } = await supabase.from('trip_invites').insert({ trip_id: tripId }).select('token').single();
+  if (error || !data) return { error: 'Only the trip owner can create an invite link.' };
+  return { token: data.token as string };
+}
+
+export async function revokeInvite(tripId: string): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createSupabaseServer();
+  const { error } = await supabase.from('trip_invites').delete().eq('trip_id', tripId);
+  return error ? { error: error.message } : { ok: true };
+}
+
+// Owner removing someone, or a member leaving (userId = their own id).
+export async function removeMember(tripId: string, userId: string): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase
+    .from('trip_members')
+    .delete()
+    .eq('trip_id', tripId)
+    .eq('user_id', userId)
+    .select('user_id');
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) return { error: "Couldn't remove that person." };
+  revalidatePath('/');
+  revalidatePath(`/trips/${tripId}`);
+  return { ok: true };
+}
+
+export interface InvitePreview {
+  trip_name: string;
+  owner_name: string;
+  already_member: boolean;
+}
+
+export async function previewInvite(token: string): Promise<InvitePreview | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createSupabaseServer();
+  const { data } = await supabase.rpc('preview_invite', { p_token: token });
+  const row = Array.isArray(data) ? data[0] : data;
+  return (row as InvitePreview | undefined) ?? null;
+}
+
+export async function joinTrip(token: string): Promise<{ id: string } | { error: string }> {
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase.rpc('join_trip', { p_token: token });
+  if (error) return { error: error.message };
+  if (!data) return { error: 'This invite link is no longer valid.' };
+  revalidatePath('/');
+  return { id: data as string };
 }

@@ -18,7 +18,7 @@ import { formatDate, timeAgo, formatTimeInZone, getHotelDates } from '@/lib/util
 import { getEditorName } from '@/lib/editorName';
 import { cityKey } from '@/lib/trip';
 import { useTrip } from './TripProvider';
-import { DayWeather, weatherCodeInfo } from '@/lib/weather';
+import { DayWeather, weatherCodeInfo, weatherKindLabel } from '@/lib/weather';
 import { getWordOfDay } from '@/lib/wordOfDay';
 import { TravelSegment, TravelMode } from '@/lib/travel';
 import {
@@ -121,9 +121,10 @@ function DayHeader({
                   return (
                     <div
                       className="flex items-center justify-center gap-1 text-[10px] text-gray-500 dark:text-gray-400"
-                      title={`${label} — ${city.name}`}
+                      title={`${label} — ${city.name} (${weatherKindLabel(cityWeather.kind)})`}
                     >
                       <span>{icon}</span>
+                      {cityWeather.kind === 'typical' && <span aria-label="typical">~</span>}
                       <span className="font-medium">{cityWeather.high}°</span>
                       <span className="text-gray-300 dark:text-gray-600">/{cityWeather.low}°</span>
                     </div>

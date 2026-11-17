@@ -2,11 +2,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft, Settings2 } from 'lucide-react';
 import { getAttractions, getDayNotes, getHotels } from '@/app/actions';
-import { getTrip } from '@/app/trips/actions';
+import { getInviteToken, getTrip, getTripPeople } from '@/app/trips/actions';
 import CalendarBoard from '@/components/CalendarBoardClient';
 import ThemeToggle from '@/components/ThemeToggle';
 import EditorNameBadge from '@/components/EditorNameBadge';
 import PresenceIndicator from '@/components/PresenceIndicator';
+import ShareTripButton from '@/components/ShareTripButton';
 import InstallPrompt from '@/components/InstallPrompt';
 import UserMenu from '@/components/UserMenu';
 import { getCurrentUser } from '@/lib/supabase/server';
@@ -28,11 +29,14 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
 
   const user = await getCurrentUser();
   const attractions = await getAttractions(tripId);
-  const [weather, travelSegments, dayNotes, hotels] = await Promise.all([
+  const displayName = (user?.user_metadata?.full_name as string | undefined)?.trim() || user?.email?.split('@')[0] || 'Someone';
+  const [weather, travelSegments, dayNotes, hotels, people, inviteToken] = await Promise.all([
     getWeatherForDates(trip),
     getTravelSegments(attractions),
     getDayNotes(tripId),
     getHotels(tripId),
+    getTripPeople(tripId),
+    trip.is_owner ? getInviteToken(tripId) : Promise.resolve(null),
   ]);
 
   return (
@@ -57,15 +61,26 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
         </div>
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <InstallPrompt />
-          <PresenceIndicator tripId={trip.id} />
+          {user && <PresenceIndicator tripId={trip.id} userId={user.id} name={displayName} />}
           <EditorNameBadge />
-          <Link
-            href={`/trips/${trip.id}/edit`}
-            title="Trip settings"
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <Settings2 size={16} />
-          </Link>
+          {user && (
+            <ShareTripButton
+              tripId={trip.id}
+              isOwner={trip.is_owner}
+              currentUserId={user.id}
+              people={people}
+              initialToken={inviteToken}
+            />
+          )}
+          {trip.is_owner && (
+            <Link
+              href={`/trips/${trip.id}/edit`}
+              title="Trip settings"
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <Settings2 size={16} />
+            </Link>
+          )}
           <ThemeToggle />
           {user && (
             <UserMenu

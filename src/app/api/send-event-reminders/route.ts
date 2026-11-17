@@ -59,7 +59,8 @@ interface SubscriptionRow {
 // here, so Supabase's pg_cron is the more reliable option for most people).
 // Finds every scheduled attraction starting in the next 30 minutes (in its
 // own trip's local time) that hasn't already had a reminder sent, and pushes
-// a notification to the devices of the user who owns that trip.
+// a notification to the devices of everyone on that trip (owner and invited
+// members).
 function ownerOf(a: AttractionRow): string {
   const trip = Array.isArray(a.trips) ? a.trips[0] : a.trips;
   return trip?.owner_id ?? '';
@@ -126,10 +127,25 @@ async function handleReminders(request: NextRequest) {
     return NextResponse.json({ checked: upcoming.length, reminded: 0, pushesSent: 0 });
   }
 
+  // Everyone on each trip: its owner plus any invited members.
+  const tripIds = [...new Set(toRemind.map((a) => a.trip_id))];
+  const { data: memberRows } = await supabase.from('trip_members').select('trip_id, user_id').in('trip_id', tripIds);
+  const recipientsByTrip = new Map<string, Set<string>>();
+  for (const a of toRemind) {
+    const set = recipientsByTrip.get(a.trip_id) ?? new Set<string>();
+    set.add(ownerOf(a));
+    recipientsByTrip.set(a.trip_id, set);
+  }
+  for (const m of (memberRows ?? []) as { trip_id: string; user_id: string }[]) {
+    recipientsByTrip.get(m.trip_id)?.add(m.user_id);
+  }
+  const allRecipients = new Set<string>();
+  recipientsByTrip.forEach((set) => set.forEach((id) => allRecipients.add(id)));
+
   const { data: subscriptions, error: subsError } = await supabase
     .from('push_subscriptions')
     .select('id, user_id, endpoint, p256dh, auth')
-    .in('user_id', [...new Set(toRemind.map((a) => ownerOf(a)))]);
+    .in('user_id', [...allRecipients]);
   if (subsError) {
     return NextResponse.json({ error: subsError.message }, { status: 500 });
   }
@@ -146,7 +162,7 @@ async function handleReminders(request: NextRequest) {
     const payload = JSON.stringify({ title, body, tag: `event-${attraction.id}`, url: `/trips/${attraction.trip_id}` });
 
     await Promise.all(
-      subs.filter((sub) => sub.user_id === ownerOf(attraction)).map(async (sub) => {
+      subs.filter((sub) => recipientsByTrip.get(attraction.trip_id)?.has(sub.user_id)).map(async (sub) => {
         try {
           await webpush.sendNotification(
             { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },

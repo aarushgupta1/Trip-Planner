@@ -5,6 +5,7 @@ import { Attraction, Category, Hotel } from '@/lib/types';
 import { CATEGORY_LABELS, CATEGORY_ICONS, SELECTABLE_CATEGORIES, formatDateFull, getMapsUrl, getDirectionsUrl, getHotelDates, CalendarTimezone } from '@/lib/utils';
 import { getNowInZone } from '@/lib/tripTime';
 import { useTrip } from './TripProvider';
+import { attractionPlaceholder } from '@/lib/placeExamples';
 import { createAttractionObject } from '@/app/actions';
 import { getEditorName } from '@/lib/editorName';
 import { TICKET_IMAGE_EXTENSION_RE, uploadTicketFile } from '@/lib/tickets';
@@ -181,7 +182,7 @@ export default function CreateModal({ date, startTime, allAttractions, hotels, o
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="e.g. Schönbrunn Palace"
+              placeholder={attractionPlaceholder(getCityForDate(form.scheduled_date).name)}
             />
           </div>
 
