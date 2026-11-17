@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Pencil, Trash2 } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 import { deleteTrip } from '@/app/trips/actions';
-import { barcodeBars, cityCode, ticketNumber } from '@/lib/ticket';
+import { barcodeBars, cityCode, formatPassengers, ticketNumber } from '@/lib/ticket';
 
 const MAX_STOPS_SHOWN = 4;
 
@@ -37,6 +37,7 @@ export default function TripCard({
   days,
   status,
   isOwner,
+  passengers,
 }: {
   id: string;
   name: string;
@@ -46,6 +47,7 @@ export default function TripCard({
   days: number;
   status: { label: string; tone: 'live' | 'soon' | 'past' };
   isOwner: boolean;
+  passengers: string[]; // everyone on the trip, owner first
 }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
@@ -68,6 +70,7 @@ export default function TripCard({
   const shown = stops.length > MAX_STOPS_SHOWN ? stops.slice(0, MAX_STOPS_SHOWN - 1).concat(stops[stops.length - 1]) : stops;
   const hidden = stops.length - shown.length;
   const past = status.tone === 'past';
+  const pax = formatPassengers(passengers);
   const bars = barcodeBars(id);
   const barXs = bars.map((_, i) => bars.slice(0, i).reduce((n, w) => n + w + 1, 0));
   const barWidth = bars.reduce((n, w) => n + w + 1, 0);
@@ -121,6 +124,16 @@ export default function TripCard({
             <Field label="Return" value={range(e)} />
             <Field label="Days" value={String(days)} />
           </div>
+
+          {pax.shown.length > 0 && (
+            <div className="mt-2.5 border-t border-[var(--rule)] pt-2.5 min-w-0">
+              <div className="text-[11px] text-[var(--muted)]">{passengers.length === 1 ? 'Passenger' : 'Passengers'}</div>
+              <div className="text-sm font-medium leading-tight truncate" title={passengers.join(', ')}>
+                {pax.shown.join(', ')}
+                {pax.more > 0 && <span className="font-normal text-[var(--muted)]"> +{pax.more}</span>}
+              </div>
+            </div>
+          )}
 
           {!isOwner && <p className="mt-2 text-[11px] text-[var(--muted)]">Shared with you</p>}
           {error && <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">{error}</p>}

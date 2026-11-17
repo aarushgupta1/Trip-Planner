@@ -510,6 +510,27 @@ $$;
 revoke all on function public.get_trip_people(uuid) from public, anon;
 grant execute on function public.get_trip_people(uuid) to authenticated;
 
+-- Everyone on every trip you're on, in one call — for the passengers line on
+-- the dashboard tickets. Same rules as get_trip_people: ids and display names
+-- only (never emails), and only for trips you belong to.
+create or replace function public.get_my_trip_people()
+returns table (trip_id uuid, user_id uuid, display_name text, is_owner boolean)
+language sql stable security definer
+set search_path = public, auth
+as $$
+  select t.id,
+         u.id,
+         coalesce(nullif(trim(u.raw_user_meta_data->>'full_name'), ''), split_part(u.email, '@', 1)),
+         (t.owner_id = u.id)
+  from trips t
+  join auth.users u on u.id = t.owner_id
+    or u.id in (select m.user_id from trip_members m where m.trip_id = t.id)
+  where public.is_trip_member(t.id)
+  order by t.id, (t.owner_id = u.id) desc, 3;
+$$;
+revoke all on function public.get_my_trip_people() from public, anon;
+grant execute on function public.get_my_trip_people() to authenticated;
+
 -- What the invite page shows before someone accepts.
 create or replace function public.preview_invite(p_token text)
 returns table (trip_name text, owner_name text, already_member boolean)

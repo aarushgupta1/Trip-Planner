@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { barcodeBars, cityCode, ticketNumber } from '@/lib/ticket';
+import { barcodeBars, cityCode, formatPassengers, ticketNumber } from '@/lib/ticket';
 
 describe('ticket helpers', () => {
   it('makes three-letter city codes', () => {
@@ -17,5 +17,11 @@ describe('ticket helpers', () => {
     expect(barcodeBars('abc')).toEqual(barcodeBars('abc'));
     expect(barcodeBars('abc')).toHaveLength(30);
     expect(barcodeBars('abc').every((w) => w >= 1 && w <= 3)).toBe(true);
+  });
+  it('formats passengers with a +N overflow', () => {
+    expect(formatPassengers(['Aarush'])).toEqual({ shown: ['Aarush'], more: 0 });
+    expect(formatPassengers(['A', 'B', 'C', 'D', 'E'])).toEqual({ shown: ['A', 'B', 'C'], more: 2 });
+    expect(formatPassengers(['  ', 'A'])).toEqual({ shown: ['A'], more: 0 });
+    expect(formatPassengers([])).toEqual({ shown: [], more: 0 });
   });
 });

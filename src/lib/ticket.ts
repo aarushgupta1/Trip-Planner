@@ -20,6 +20,12 @@ export function cityCode(name: string): string {
   return (initials + words[0].slice(1)).slice(0, 3).toUpperCase().padEnd(3, 'X');
 }
 
+// Names for the ticket's passengers line: the first few, then a count of the rest.
+export function formatPassengers(names: string[], max = 3): { shown: string[]; more: number } {
+  const clean = names.map((n) => n.trim()).filter(Boolean);
+  return { shown: clean.slice(0, max), more: Math.max(0, clean.length - max) };
+}
+
 function hash(id: string): number {
   let h = 2166136261;
   for (let i = 0; i < id.length; i++) {

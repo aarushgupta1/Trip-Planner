@@ -60,19 +60,25 @@ const TRIP_COLUMNS = 'id, owner_id, name, start_date, end_date, timezone, home_t
 // invited). Only owners can edit trip settings, share or delete.
 export type SharedTrip = Trip & { is_owner: boolean };
 
-export async function getTrips(): Promise<SharedTrip[]> {
+export async function getTrips(): Promise<(SharedTrip & { people: TripPerson[] })[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createSupabaseServer();
   // One query for the trips and their stops together.
-  const [user, { data: rows, error }] = await Promise.all([
+  const [user, { data: rows, error }, { data: peopleRows }] = await Promise.all([
     getCurrentUser(),
     supabase.from('trips').select(`${TRIP_COLUMNS}, trip_cities(*)`).order('start_date', { ascending: true }),
+    supabase.rpc('get_my_trip_people'),
   ]);
   if (error) throw new Error(error.message);
+
+  // Everyone on each trip, owner first. A failure here just means tickets
+  // show no passengers line — never a broken dashboard.
+  const people = (peopleRows ?? []) as (TripPerson & { trip_id: string })[];
 
   return ((rows ?? []) as (TripRow & { trip_cities: TripCity[] })[]).map((row) => ({
     ...toTrip(row, row.trip_cities ?? []),
     is_owner: row.owner_id === user?.id,
+    people: people.filter((p) => p.trip_id === row.id),
   }));
 }
 

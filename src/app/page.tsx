@@ -40,6 +40,7 @@ export default async function DashboardPage() {
       days={generateTripDates(t).length}
       status={tripStatus(t.start_date, t.end_date, today)}
       isOwner={t.is_owner}
+      passengers={t.people.map((p) => p.display_name)}
     />
   );
 
