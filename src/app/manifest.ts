@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Trip Planner',
     short_name: 'Trips',
-    description: 'Plan a trip to anywhere — day-by-day itinerary, hotels, maps and weather.',
+    description: 'Plan a trip to anywhere — day-by-day itinerary, lodging, maps and weather.',
     start_url: '/',
     display: 'standalone',
     background_color: '#f6f7f9',

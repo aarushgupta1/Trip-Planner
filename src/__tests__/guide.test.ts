@@ -113,3 +113,15 @@ describe('guide helpers', () => {
     expect(ctx).toContain('Note: Arrive late');
   });
 });
+
+import { stripMarkdown } from '@/lib/guide';
+describe('stripMarkdown', () => {
+  it('removes bold, italics, code and headings but keeps the words', () => {
+    expect(stripMarkdown('**Hofburg** is *great*, try `Sacher`.')).toBe('Hofburg is great, try Sacher.');
+    expect(stripMarkdown('## Day 1\n- **Cafe** at 9')).toBe('Day 1\n- Cafe at 9');
+  });
+  it('keeps list dashes and multiplication-style asterisks', () => {
+    expect(stripMarkdown('- one\n- two')).toBe('- one\n- two');
+    expect(stripMarkdown('2 * 3 = 6')).toBe('2 * 3 = 6');
+  });
+});

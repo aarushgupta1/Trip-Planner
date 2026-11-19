@@ -213,7 +213,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
           <div className="flex items-end gap-2">
             <div className="flex-1">
               <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-                Hotel Name <span className="text-red-400">*</span>
+                Lodging name <span className="text-red-400">*</span>
               </label>
               <input
                 required
@@ -312,7 +312,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                Days this hotel applies to
+                Days this lodging applies to
               </label>
               {datesTouched && (
                 <button
@@ -347,7 +347,7 @@ export default function HotelModal({ hotel, onClose, onSaved, onDeleted }: Hotel
               })}
             </div>
             <p className="mt-1.5 text-[10px] text-gray-400 dark:text-gray-500 leading-relaxed">
-              Defaults to the check-in/check-out range above — tap a day to customize (e.g. non-contiguous stays). More than one hotel can be assigned to the same day.
+              Defaults to the check-in/check-out range above — tap a day to customize (e.g. non-contiguous stays). More than one lodging can be assigned to the same day.
             </p>
           </div>
 

@@ -1,5 +1,4 @@
-// The plane icon (outline only), drawn pointing right: red tail, blue middle,
-// red nose.
+// The plane icon (outline only), drawn pointing right: blue tail, red nose.
 export default function AeroPlaneIcon({ size = 13 }: { size?: number }) {
   return (
     <svg
@@ -15,12 +14,8 @@ export default function AeroPlaneIcon({ size = 13 }: { size?: number }) {
     >
       <defs>
         <linearGradient id="aero-plane-stroke" gradientUnits="userSpaceOnUse" x1="3" y1="21" x2="21" y2="3">
-          <stop offset="0" stopColor="#dc2626" />
-          <stop offset="0.34" stopColor="#dc2626" />
-          <stop offset="0.34" stopColor="#2563eb" />
-          <stop offset="0.66" stopColor="#2563eb" />
-          <stop offset="0.66" stopColor="#dc2626" />
-          <stop offset="1" stopColor="#dc2626" />
+          <stop offset="0.5" stopColor="#2563eb" />
+          <stop offset="0.5" stopColor="#dc2626" />
         </linearGradient>
       </defs>
       <path

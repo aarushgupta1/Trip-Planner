@@ -17,6 +17,7 @@ import {
   buildGuideSystemPrompt,
   parseSuggestions,
   validateGuideMessages,
+  stripMarkdown,
 } from '@/lib/guide';
 import { categoriesForTripType } from '@/lib/utils';
 
@@ -183,5 +184,5 @@ export async function askGuide(tripId: string, rawMessages: GuideMessage[]): Pro
   }
 
   if (!reply && suggestions.length === 0) return { error: 'Aero had nothing to add — try rephrasing.' };
-  return { reply: reply || 'Here are some ideas:', suggestions: suggestions.slice(0, 6), checked: [...new Set(checked)] };
+  return { reply: stripMarkdown(reply) || 'Here are some ideas:', suggestions: suggestions.slice(0, 6), checked: [...new Set(checked)] };
 }

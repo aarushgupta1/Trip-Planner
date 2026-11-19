@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import AeroPlaneIcon from './AeroPlaneIcon';
 import { AlertTriangle, CalendarPlus, Info, Send, Plane, X } from 'lucide-react';
 import { askGuide } from '@/app/guide/actions';
 import { Attraction, Hotel } from '@/lib/types';
@@ -71,7 +72,7 @@ export default function GuidePanel({
     firstEmptyDay ? `What should we do on ${formatDateFull(firstEmptyDay)}?` : 'What should we add to this trip?',
     'Is my plan too packed anywhere?',
     'Backup ideas in case it rains',
-    'Where should we eat near our hotel?',
+    'Where should we eat near our lodging?',
   ];
 
   const fixPrompt =
@@ -90,7 +91,7 @@ export default function GuidePanel({
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Aero</h2>
-          <Plane size={15} className="rotate-45 text-blue-600 dark:text-blue-400" aria-hidden />
+          <AeroPlaneIcon size={15} />
         </div>
         <button onClick={onClose} aria-label="Close Aero" className="rounded-lg p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
           <X size={18} />

@@ -87,6 +87,7 @@ export function buildGuideSystemPrompt(context: string, opts: { lookupEnabled?: 
     '',
     'How to answer:',
     '- Be concise, warm and practical. A few short paragraphs at most; no headings.',
+    '- Write plain text only. Never use markdown: no asterisks for bold or italics, no # headings, no backticks. For a short list, put each item on its own line starting with "- ".',
     '- Use the trip data below: dates, cities, lodging, weather, opening hours and what is already booked. Prefer places in the trip\'s cities, near the lodging or the other events that day.',
     opts.lookupEnabled
       ? '- You have a lookup_place tool that returns live facts from Google Maps: opening hours, whether a place is open right now, permanent or temporary closures, rating and price level. Use it (it costs money, so only when it matters, at most a few places per answer) before stating or suggesting opening hours, closures or whether something is open, and before recommending a specific place to add. Base what you say about hours, ratings and prices on the lookup result, not on memory. If a lookup finds nothing, say you could not confirm it. Put the looked-up hours into opening_hours / open_days in suggestions.'
@@ -106,6 +107,18 @@ export function buildGuideSystemPrompt(context: string, opts: { lookupEnabled?: 
     context,
     '</trip_data>',
   ].join('\n');
+}
+
+// The chat shows plain text, so remove any markdown the model slips in:
+// **bold**, *italics*, __underline__, `code` and leading # headings.
+export function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*([\s\S]+?)\*\*/g, '$1')
+    .replace(/__([\s\S]+?)__/g, '$1')
+    .replace(/(^|[\s(])\*(?!\s)(.+?)\*(?=$|[\s).,!?:;])/g, '$1$2')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*/g, '');
 }
 
 export function suggestEventsToolFor(type: TripType) {
