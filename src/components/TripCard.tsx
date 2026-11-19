@@ -11,7 +11,7 @@ import { deleteTrip } from '@/app/trips/actions';
 import { TripType, TRIP_TYPE_LABELS } from '@/lib/utils';
 import { barcodeBars, cityCode, formatPassengers } from '@/lib/ticket';
 
-const MAX_STOPS_SHOWN = 4;
+const MAX_STOPS_SHOWN = 3; // destinations shown between the start and end
 
 function parts(iso: string) {
   const d = new Date(iso + 'T12:00:00Z');
@@ -43,6 +43,7 @@ export default function TripCard({
   passengers,
   number,
   tripType,
+  home,
   initial,
   startEditing = false,
 }: {
@@ -56,6 +57,7 @@ export default function TripCard({
   isOwner: boolean;
   passengers: string[]; // everyone on the trip, owner first
   tripType: TripType;
+  home: string; // where the trip starts and ends (for now, the same place)
   initial: TripInput; // current settings, for editing in place
   startEditing?: boolean;
   number: number; // 1 for your first trip, 2 for the next, and so on
@@ -84,8 +86,10 @@ export default function TripCard({
   const s = parts(start);
   const e = parts(end);
   const range = (p: typeof s) => `${p.month} ${p.day}`;
-  const shown = stops.length > MAX_STOPS_SHOWN ? stops.slice(0, MAX_STOPS_SHOWN - 1).concat(stops[stops.length - 1]) : stops;
-  const hidden = stops.length - shown.length;
+  const middle = stops.length > MAX_STOPS_SHOWN ? stops.slice(0, MAX_STOPS_SHOWN - 1).concat(stops[stops.length - 1]) : stops;
+  const hidden = stops.length - middle.length;
+  const homeStop = home ? { name: home, country: '' } : null;
+  const shown = homeStop ? [homeStop, ...middle, homeStop] : middle;
   const past = status.tone === 'past';
   const pax = formatPassengers(passengers);
   const bars = barcodeBars(id);
@@ -134,7 +138,7 @@ export default function TripCard({
                 {i > 0 && (
                   <div className="mx-3 mt-[10px] flex min-w-4 flex-1 flex-col" aria-hidden>
                     <div className="ticket-route" />
-                    {hidden > 0 && i === shown.length - 1 && (
+                    {hidden > 0 && i === middle.length - (homeStop ? 0 : 1) && (
                       <span className="mt-1 text-center text-[10px] text-[var(--muted)]">+{hidden} more</span>
                     )}
                   </div>

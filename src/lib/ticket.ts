@@ -20,6 +20,13 @@ export function cityCode(name: string): string {
   return (initials + words[0].slice(1)).slice(0, 3).toUpperCase().padEnd(3, 'X');
 }
 
+// The city part of a time zone, as a stand-in for where the travellers live:
+// "America/New_York" → "New York", "America/Argentina/Buenos_Aires" → "Buenos Aires".
+export function homeCityFromTimezone(tz: string): string {
+  const last = tz.split('/').pop() ?? '';
+  return last.replace(/_/g, ' ').trim();
+}
+
 // Names for the ticket's passengers line: the first few, then a count of the rest.
 export function formatPassengers(names: string[], max = 3): { shown: string[]; more: number } {
   const clean = names.map((n) => n.trim()).filter(Boolean);

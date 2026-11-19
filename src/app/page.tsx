@@ -5,6 +5,7 @@ import { getTrips } from '@/app/trips/actions';
 import { getCurrentUser, isSupabaseConfigured } from '@/lib/supabase/server';
 import { generateTripDates, getCityOrder } from '@/lib/trip';
 import TripForm from '@/components/TripForm';
+import { homeCityFromTimezone } from '@/lib/ticket';
 import TripCard from '@/components/TripCard';
 import UserMenu from '@/components/UserMenu';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -46,6 +47,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       passengers={t.people.map((p) => p.display_name)}
       number={t.ticket_no}
       tripType={t.trip_type}
+      home={homeCityFromTimezone(t.home_timezone)}
       startEditing={t.is_owner && edit === t.id}
       initial={{
         name: t.name,
