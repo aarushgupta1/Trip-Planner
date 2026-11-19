@@ -1,17 +1,15 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
-import { Luggage, Plus, Sparkles, Users, X } from 'lucide-react';
-import { addPackingItem, addStarterItems, deletePackingItem, getPackingItems, setItemShared, setPacked } from '@/app/packing/actions';
+import { Luggage, Plus, Users, X } from 'lucide-react';
+import { addPackingItem, deletePackingItem, getPackingItems, setItemShared, setPacked } from '@/app/packing/actions';
 import { PackingItem, packedCount, sortItems } from '@/lib/packing';
-import { TRIP_TYPE_LABELS, TripType } from '@/lib/utils';
 
 // Each person's packing list. Items marked "shared" show up on everyone's
 // list; ticks are always your own.
-export default function PackingPanel({ tripId, tripType, onClose }: { tripId: string; tripType: TripType; onClose: () => void }) {
+export default function PackingPanel({ tripId, onClose }: { tripId: string; onClose: () => void }) {
   const [items, setItems] = useState<PackingItem[] | null>(null);
-  const [name, setName] = useState('');
-  const [shareNew, setShareNew] = useState(false);
+  const [drafts, setDrafts] = useState<{ shared: string; mine: string }>({ shared: '', mine: '' });
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -39,25 +37,17 @@ export default function PackingPanel({ tripId, tripType, onClose }: { tripId: st
     });
   };
 
-  const add = (e: React.FormEvent) => {
+  const add = (e: React.FormEvent, shared: boolean) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const field = shared ? 'shared' : 'mine';
+    const text = drafts[field];
+    if (!text.trim()) return;
     setError(null);
-    const text = name;
-    setName('');
+    setDrafts((d) => ({ ...d, [field]: '' }));
     startTransition(async () => {
-      const r = await addPackingItem(tripId, text, shareNew);
-      if ('error' in r) { setError(r.error); setName(text); }
+      const r = await addPackingItem(tripId, text, shared);
+      if ('error' in r) { setError(r.error); setDrafts((d) => ({ ...d, [field]: text })); }
       else setItems((prev) => [...(prev ?? []), r.item]);
-    });
-  };
-
-  const addIdeas = () => {
-    setError(null);
-    startTransition(async () => {
-      const r = await addStarterItems(tripId);
-      if ('error' in r) setError(r.error);
-      else setItems((prev) => [...(prev ?? []), ...r.items]);
     });
   };
 
@@ -95,25 +85,71 @@ export default function PackingPanel({ tripId, tripType, onClose }: { tripId: st
         <>
           <button
             onClick={() => toggleShared(item)}
-            title={item.shared ? 'Shared with everyone. Click to keep it just on your list' : 'Add to everyone’s list'}
-            aria-label={item.shared ? 'Stop sharing' : 'Share with everyone'}
-            className={['rounded p-1 transition-colors', item.shared ? 'text-blue-600 dark:text-blue-400' : 'text-gray-300 hover:text-blue-600 dark:text-gray-600 dark:hover:text-blue-400'].join(' ')}
+            title={item.shared ? 'On everyone’s list. Click to move it to just your list' : 'Click to put this on everyone’s list'}
+            aria-label={item.shared ? 'Move to just my list' : 'Add to everyone’s list'}
+            className={[
+              'rounded p-1 transition-colors',
+              item.shared
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'text-blue-600 ring-1 ring-blue-600/40 hover:bg-blue-600/10 dark:text-blue-400',
+            ].join(' ')}
           >
             <Users size={13} />
           </button>
-          <button onClick={() => remove(item)} aria-label={`Remove ${item.name}`} className="rounded p-1 text-gray-300 hover:text-red-600 dark:text-gray-600 dark:hover:text-red-400">
-            <X size={13} />
-          </button>
+          {!item.packed && (
+            <button onClick={() => remove(item)} aria-label={`Remove ${item.name}`} className="rounded p-1 text-gray-300 hover:text-red-600 dark:text-gray-600 dark:hover:text-red-400">
+              <X size={13} />
+            </button>
+          )}
         </>
       )}
     </li>
   );
 
-  const heading = 'px-2 pb-1 pt-3 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500';
+  const column = (title: string, hint: string, shared: boolean, rows: PackingItem[]) => {
+    const field = shared ? 'shared' : 'mine';
+    return (
+      <section className="flex min-h-0 flex-col sm:overflow-y-auto" aria-label={title}>
+        <div className="px-4 pt-3">
+          <h3 className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500">{title}</h3>
+          <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">{hint}</p>
+        </div>
+        <form onSubmit={(e) => add(e, shared)} className="px-4 py-2">
+          <div className="flex gap-2">
+            <input
+              value={drafts[field]}
+              onChange={(e) => setDrafts((d) => ({ ...d, [field]: e.target.value }))}
+              maxLength={120}
+              placeholder={shared ? 'Add to everyone’s list…' : 'Add to your list…'}
+              aria-label={shared ? 'Add to everyone’s list' : 'Add to your list'}
+              className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            />
+            <button
+              type="submit"
+              disabled={!drafts[field].trim() || isPending}
+              aria-label="Add item"
+              className="inline-flex items-center rounded-xl bg-blue-600 px-3 text-white hover:bg-blue-700 disabled:opacity-40"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+        </form>
+        <div className="px-2 pb-4">
+          {items === null ? (
+            <p className="px-2 py-4 text-sm text-gray-400">Loading…</p>
+          ) : rows.length === 0 ? (
+            <p className="px-2 py-4 text-xs text-gray-400 dark:text-gray-500">Nothing here yet.</p>
+          ) : (
+            <ul>{rows.map(row)}</ul>
+          )}
+        </div>
+      </section>
+    );
+  };
 
   return (
     <aside
-      className="fixed right-0 top-14 bottom-0 z-40 flex w-full flex-col border-l border-t-2 border-gray-200 border-t-blue-600 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 sm:w-[400px]"
+      className="fixed right-0 top-14 bottom-0 z-40 flex w-full flex-col border-l border-t-2 border-gray-200 border-t-blue-600 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 sm:w-[760px] sm:max-w-[100vw]"
       aria-label="Packing list"
     >
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
@@ -133,66 +169,11 @@ export default function PackingPanel({ tripId, tripType, onClose }: { tripId: st
         </div>
       )}
 
-      <form onSubmit={add} className="border-b border-gray-100 px-4 py-3 dark:border-gray-800">
-        <div className="flex gap-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={120}
-            placeholder="Add something to pack…"
-            className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-          />
-          <button
-            type="submit"
-            disabled={!name.trim() || isPending}
-            aria-label="Add item"
-            className="inline-flex items-center rounded-xl bg-blue-600 px-3 text-white hover:bg-blue-700 disabled:opacity-40"
-          >
-            <Plus size={16} />
-          </button>
-        </div>
-        <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-          <input type="checkbox" checked={shareNew} onChange={(e) => setShareNew(e.target.checked)} className="h-3.5 w-3.5" />
-          Add to everyone’s list (like a group charger)
-        </label>
-      </form>
-
-      <div className="flex-1 overflow-y-auto px-3 pb-4">
-        {items === null ? (
-          <p className="px-2 py-6 text-sm text-gray-400">Loading…</p>
-        ) : total === 0 ? (
-          <div className="px-2 py-8 text-center">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Nothing to pack yet</p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Add items above, or start from some ideas for a {TRIP_TYPE_LABELS[tripType].toLowerCase()} trip.</p>
-          </div>
-        ) : (
-          <>
-            {sharedItems.length > 0 && (
-              <>
-                <h3 className={heading}>On everyone’s list</h3>
-                <ul>{sharedItems.map(row)}</ul>
-              </>
-            )}
-            {mineItems.length > 0 && (
-              <>
-                <h3 className={heading}>Just mine</h3>
-                <ul>{mineItems.map(row)}</ul>
-              </>
-            )}
-          </>
-        )}
-        {items !== null && (
-          <button
-            onClick={addIdeas}
-            disabled={isPending}
-            className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-blue-600/40 px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-600/10 disabled:opacity-50 dark:text-blue-400"
-          >
-            <Sparkles size={13} />
-            Add ideas for a {TRIP_TYPE_LABELS[tripType].toLowerCase()} trip
-          </button>
-        )}
-        {error && <p className="mt-3 text-xs font-medium text-red-600 dark:text-red-400">{error}</p>}
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto sm:grid-cols-2 sm:divide-x sm:divide-gray-100 sm:overflow-hidden dark:sm:divide-gray-800">
+        {column('On everyone’s list', 'Shared items, like a group charger. Everyone ticks them off themselves.', true, sharedItems)}
+        {column('Just mine', 'Only you see these. Click the people icon to share one.', false, mineItems)}
       </div>
+      {error && <p className="border-t border-gray-100 px-4 py-2 text-xs font-medium text-red-600 dark:border-gray-800 dark:text-red-400">{error}</p>}
     </aside>
   );
 }

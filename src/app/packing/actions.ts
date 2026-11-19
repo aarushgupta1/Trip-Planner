@@ -1,8 +1,7 @@
 'use server';
 
 import { createSupabaseServer, getCurrentUser, isSupabaseConfigured } from '@/lib/supabase/server';
-import { MAX_PACKING_ITEMS, PackingItem, cleanItemName, missingStarterItems } from '@/lib/packing';
-import { normalizeTripType } from '@/lib/utils';
+import { MAX_PACKING_ITEMS, PackingItem, cleanItemName } from '@/lib/packing';
 
 type Result<T = object> = ({ ok: true } & T) | { error: string };
 
@@ -45,27 +44,6 @@ export async function addPackingItem(tripId: string, name: string, shared: boole
     .single();
   if (error || !data) return { error: error?.message ?? "Couldn't add that." };
   return { ok: true, item: { id: data.id, name: data.name, shared: data.shared, mine: true, packed: false, addedBy: null } };
-}
-
-// Adds the starter ideas for this kind of trip that aren't on your list yet.
-export async function addStarterItems(tripId: string): Promise<Result<{ items: PackingItem[] }>> {
-  const supabase = await createSupabaseServer();
-  const user = await getCurrentUser();
-  if (!user) return { error: 'You need to sign in again.' };
-  const { data: trip } = await supabase.from('trips').select('trip_type').eq('id', tripId).maybeSingle();
-  if (!trip) return { error: "Couldn't find that trip." };
-  const existing = await getPackingItems(tripId);
-  const toAdd = missingStarterItems(existing.map((i) => i.name), normalizeTripType(trip.trip_type)).slice(0, Math.max(0, MAX_PACKING_ITEMS - existing.length));
-  if (toAdd.length === 0) return { ok: true, items: [] };
-  const { data, error } = await supabase
-    .from('packing_items')
-    .insert(toAdd.map((name) => ({ trip_id: tripId, name, shared: false, created_by: user.id })))
-    .select('id, name, shared');
-  if (error) return { error: error.message };
-  return {
-    ok: true,
-    items: ((data ?? []) as { id: string; name: string; shared: boolean }[]).map((r) => ({ id: r.id, name: r.name, shared: r.shared, mine: true, packed: false, addedBy: null })),
-  };
 }
 
 export async function setPacked(itemId: string, packed: boolean): Promise<Result> {

@@ -938,7 +938,14 @@ export default function CalendarBoard({
               >
                 <PanelLeftOpen size={20} />
               </button>
-              <div className="hidden sm:block w-11" />
+              <button
+                onClick={() => { setShowPacking((v) => !v); setShowGuide(false); }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-semibold transition-colors"
+                title="Your packing list"
+              >
+                <Luggage size={13} />
+                <span className="hidden sm:inline">Packing list</span>
+              </button>
 
               {/* Navigation — centered */}
               <div className="flex-1 flex items-center justify-center gap-1">
@@ -972,14 +979,6 @@ export default function CalendarBoard({
                   Ask
                   <AeroPlaneIcon size={13} />
                   Aero
-                </button>
-                <button
-                  onClick={() => { setShowPacking((v) => !v); setShowGuide(false); }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-semibold transition-colors"
-                  title="Your packing list"
-                >
-                  <Luggage size={13} />
-                  <span className="hidden sm:inline">Packing</span>
                 </button>
                 {/* Jump to today — only relevant while the trip is actually underway */}
                 {now && TRIP_DATES.includes(now.date) && (
@@ -1133,7 +1132,7 @@ export default function CalendarBoard({
         />
       )}
 
-      {showPacking && <PackingPanel tripId={trip.id} tripType={trip.trip_type} onClose={() => setShowPacking(false)} />}
+      {showPacking && <PackingPanel tripId={trip.id} onClose={() => setShowPacking(false)} />}
 
       {showGuide && (
         <GuidePanel
