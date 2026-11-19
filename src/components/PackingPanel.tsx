@@ -233,7 +233,7 @@ export default function PackingPanel({ tripId, onClose }: { tripId: string; onCl
 
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto sm:grid-cols-2 sm:divide-x sm:divide-gray-100 sm:overflow-hidden dark:sm:divide-gray-800">
         {column('On everyone’s list', 'Shared items.', true, sharedItems)}
-        {column('Just mine', 'Only you see these. Click the people icon to share one.', false, mineItems)}
+        {column('Just mine', 'Only you see these.', false, mineItems)}
       </div>
       {error && <p className="border-t border-gray-100 px-4 py-2 text-xs font-medium text-red-600 dark:border-gray-800 dark:text-red-400">{error}</p>}
     </>
