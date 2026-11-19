@@ -44,7 +44,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       days={generateTripDates(t).length}
       status={tripStatus(t.start_date, t.end_date, today)}
       isOwner={t.is_owner}
-      passengers={t.people.map((p) => ({ name: p.display_name, font: p.font_idx ?? 0 }))}
+      passengers={t.people.map((p) => p.display_name)}
       number={t.ticket_no}
       tripType={t.trip_type}
       home={t.my_origin?.name ?? homeCityFromTimezone(t.home_timezone)}
