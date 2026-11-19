@@ -113,9 +113,9 @@ function DayHeader({
   // Only real forecasts and recorded weather are shown. A day too far out for
   // a forecast shows no temperature rather than a historical average.
   const shownWeather = weather?.filter((w) => w.kind !== 'typical');
-  // A city's name is only spelled out where its stay begins (or on the first
-  // day shown); later days of the same stay just carry its colour dot, so the
-  // same place isn't repeated under every date.
+  // A city's name is only spelled out where its stay begins; later days of
+  // the same stay, including the first day on a later page, just carry its
+  // colour dot, so the same place isn't repeated.
   const previousKeys = prevDate ? getCitiesForDate(prevDate).map((c) => cityKey(c)) : [];
   const wordOfDay = getWordOfDay(trip, date);
   // More than one hotel can be assigned to the same day (comparing options,
@@ -1023,7 +1023,7 @@ export default function CalendarBoard({
                 <DayHeader
                   key={date}
                   date={date}
-                  prevDate={i > 0 ? visibleDates[i - 1] : undefined}
+                  prevDate={TRIP_DATES[currentPage * daysPerPage + i - 1]}
                   note={dayNotes[date] ?? ''}
                   weather={weather[date]}
                   hotels={hotels}
