@@ -160,7 +160,7 @@ export default function TripCard({
               </div>
               <div className="mt-1 flex flex-wrap gap-1.5" title={passengers.join(', ')}>
                 {pax.shown.map((n, i) => (
-                  <span key={`${n}-${i}`} className="max-w-[10rem] truncate rounded-[3px] border border-[var(--rule)] px-2 py-0.5 text-[13px] font-semibold leading-tight">
+                  <span key={`${n}-${i}`} className="max-w-[12rem] truncate rounded-[3px] border border-[var(--rule)] px-2 pt-0.5 font-hand text-[22px] leading-[1.1]">
                     {n}
                   </span>
                 ))}

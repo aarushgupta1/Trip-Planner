@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, IBM_Plex_Mono } from 'next/font/google';
+import { Inter, IBM_Plex_Mono, Nanum_Pen_Script } from 'next/font/google';
 import './globals.css';
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const nanumPen = Nanum_Pen_Script({ subsets: ['latin'], weight: '400', variable: '--font-nanum-pen' });
 const plexMono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-plex-mono' });
 
 export const metadata: Metadata = {
@@ -36,7 +37,7 @@ const THEME_INIT_SCRIPT = `
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
-      <body className={`${inter.variable} ${plexMono.variable} h-full antialiased`} suppressHydrationWarning>
+      <body className={`${inter.variable} ${plexMono.variable} ${nanumPen.variable} h-full antialiased`} suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <div className="brand-rule" aria-hidden />
         {children}
