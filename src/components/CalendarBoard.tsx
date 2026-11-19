@@ -53,7 +53,6 @@ import PackingPanel from './PackingPanel';
 import type { GuideSuggestion } from '@/lib/guide';
 import NotificationsMenu from './NotificationsMenu';
 import FlightPathIcon from './FlightPathIcon';
-import ThemeToggle from './ThemeToggle';
 import TimeLabels from './TimeLabels';
 import { Pencil, PanelLeftOpen, WifiOff, CalendarDays, ArrowRight, Clock, Luggage, Map as MapIcon } from 'lucide-react';
 
@@ -888,9 +887,6 @@ export default function CalendarBoard({
                 represent permanently different things, not a preference to
                 flip back and forth. */}
             <div className="flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-950/40 border-b border-gray-100 dark:border-gray-800 px-2 py-1 shrink-0">
-              {/* Night mode — far left of the toolbar. */}
-              <ThemeToggle bordered />
-
               {/* "Up next" — the very next timed event from now, so you can
                   tell what's coming without paging through the calendar.
                   Clicking it jumps straight to that event. Hidden once

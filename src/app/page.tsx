@@ -8,7 +8,6 @@ import TripForm from '@/components/TripForm';
 import { homeCityFromTimezone } from '@/lib/ticket';
 import TripCard from '@/components/TripCard';
 import UserMenu from '@/components/UserMenu';
-import ThemeToggle from '@/components/ThemeToggle';
 
 export const metadata = { title: 'My trips · Trip Planner' };
 
@@ -80,7 +79,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <span className="font-semibold tracking-tight text-gray-900 dark:text-gray-100">Trip Planner</span>
         </div>
         <div className="flex items-center gap-2">
-          <ThemeToggle />
           {user && <UserMenu displayName={displayName} email={user.email ?? ''} />}
         </div>
       </header>

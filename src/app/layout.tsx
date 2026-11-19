@@ -25,20 +25,10 @@ export const viewport: Viewport = {
   themeColor: '#1f4fd8',
 };
 
-const THEME_INIT_SCRIPT = `
-  try {
-    var theme = localStorage.getItem('vienna-theme');
-    if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      document.documentElement.classList.add('dark');
-    }
-  } catch (e) {}
-`;
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <body className={`${inter.variable} ${plexMono.variable} ${nanumPen.variable} h-full antialiased`} suppressHydrationWarning>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <div className="brand-rule" aria-hidden />
         {children}
         <ServiceWorkerRegistration />
