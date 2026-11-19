@@ -6,25 +6,24 @@ import { MAX_PACKING_ITEMS, PackingItem, cleanItemName } from '@/lib/packing';
 type Result<T = object> = ({ ok: true } & T) | { error: string };
 
 // Your packing list for a trip: your own items plus everything anyone marked
-// as shared. Ticks are yours alone. Row Level Security does the filtering.
+// as shared. Ticking a shared item ticks it for everyone. Row Level Security
+// does the filtering.
 export async function getPackingItems(tripId: string): Promise<PackingItem[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createSupabaseServer();
   const user = await getCurrentUser();
   if (!user) return [];
-  const [{ data: items }, { data: checks }, { data: people }] = await Promise.all([
-    supabase.from('packing_items').select('id, name, shared, created_by, created_at').eq('trip_id', tripId).order('created_at', { ascending: true }),
-    supabase.from('packing_checks').select('item_id').eq('user_id', user.id),
+  const [{ data: items }, { data: people }] = await Promise.all([
+    supabase.from('packing_items').select('id, name, shared, packed, created_by, created_at').eq('trip_id', tripId).order('created_at', { ascending: true }),
     supabase.rpc('get_trip_people', { p_trip: tripId }),
   ]);
-  const packed = new Set(((checks ?? []) as { item_id: string }[]).map((c) => c.item_id));
   const names = new Map(((Array.isArray(people) ? people : []) as { user_id: string; display_name: string }[]).map((p) => [p.user_id, p.display_name]));
-  return ((items ?? []) as { id: string; name: string; shared: boolean; created_by: string }[]).map((r) => ({
+  return ((items ?? []) as { id: string; name: string; shared: boolean; packed: boolean; created_by: string }[]).map((r) => ({
     id: r.id,
     name: r.name,
     shared: r.shared,
     mine: r.created_by === user.id,
-    packed: packed.has(r.id),
+    packed: r.packed,
     addedBy: r.created_by === user.id ? null : names.get(r.created_by) ?? null,
   }));
 }
@@ -48,12 +47,10 @@ export async function addPackingItem(tripId: string, name: string, shared: boole
 
 export async function setPacked(itemId: string, packed: boolean): Promise<Result> {
   const supabase = await createSupabaseServer();
-  const user = await getCurrentUser();
-  if (!user) return { error: 'You need to sign in again.' };
-  const { error } = packed
-    ? await supabase.from('packing_checks').upsert({ item_id: itemId, user_id: user.id })
-    : await supabase.from('packing_checks').delete().eq('item_id', itemId).eq('user_id', user.id);
-  return error ? { error: error.message } : { ok: true };
+  const { data, error } = await supabase.rpc('set_item_packed', { p_item: itemId, p_packed: packed });
+  if (error) return { error: error.message };
+  if (!data) return { error: "Couldn't update that item." };
+  return { ok: true };
 }
 
 export async function setItemShared(itemId: string, shared: boolean): Promise<Result> {

@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { Luggage, Plus, Users, X } from 'lucide-react';
+import { getSupabaseClient } from '@/lib/supabase';
 import { addPackingItem, deletePackingItem, getPackingItems, setItemShared, setPacked } from '@/app/packing/actions';
 import { PackingItem, packedCount, sortItems } from '@/lib/packing';
 
 // Each person's packing list. Items marked "shared" show up on everyone's
-// list; ticks are always your own.
+// list, and ticking one ticks it for everyone (live).
 export default function PackingPanel({ tripId, onClose }: { tripId: string; onClose: () => void }) {
   const [items, setItems] = useState<PackingItem[] | null>(null);
   const [drafts, setDrafts] = useState<{ shared: string; mine: string }>({ shared: '', mine: '' });
@@ -19,6 +20,19 @@ export default function PackingPanel({ tripId, onClose }: { tripId: string; onCl
       .then((rows) => { if (!cancelled) setItems(rows); })
       .catch(() => { if (!cancelled) { setItems([]); setError("Couldn't load your packing list."); } });
     return () => { cancelled = true; };
+  }, [tripId]);
+
+  // Someone else added, changed or ticked an item: reload the list.
+  useEffect(() => {
+    const client = getSupabaseClient();
+    if (!client) return;
+    const refresh = () => { getPackingItems(tripId).then(setItems).catch(() => {}); };
+    const channel = client
+      .channel(`packing-realtime-${tripId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'packing_items', filter: `trip_id=eq.${tripId}` }, refresh)
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'packing_items' }, refresh)
+      .subscribe();
+    return () => { client.removeChannel(channel); };
   }, [tripId]);
 
   const list = items ?? [];
@@ -170,7 +184,7 @@ export default function PackingPanel({ tripId, onClose }: { tripId: string; onCl
       )}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto sm:grid-cols-2 sm:divide-x sm:divide-gray-100 sm:overflow-hidden dark:sm:divide-gray-800">
-        {column('On everyone’s list', 'Shared items, like a group charger. Everyone ticks them off themselves.', true, sharedItems)}
+        {column('On everyone’s list', 'Shared items.', true, sharedItems)}
         {column('Just mine', 'Only you see these. Click the people icon to share one.', false, mineItems)}
       </div>
       {error && <p className="border-t border-gray-100 px-4 py-2 text-xs font-medium text-red-600 dark:border-gray-800 dark:text-red-400">{error}</p>}
