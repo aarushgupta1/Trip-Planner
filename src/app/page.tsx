@@ -6,6 +6,7 @@ import { getCurrentUser, isSupabaseConfigured } from '@/lib/supabase/server';
 import { generateTripDates, getCityOrder } from '@/lib/trip';
 import TripForm from '@/components/TripForm';
 import { homeCityFromTimezone } from '@/lib/ticket';
+import NameGreeting from '@/components/NameGreeting';
 import TripCard from '@/components/TripCard';
 import UserMenu from '@/components/UserMenu';
 
@@ -96,9 +97,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
         <div className="flex items-end justify-between gap-3 mb-6">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-              {displayName ? `Hi ${displayName.split(' ')[0]}` : 'My trips'}
-            </h1>
+            {displayName ? (
+              <NameGreeting name={displayName.split(' ')[0]} />
+            ) : (
+              <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">My trips</h1>
+            )}
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {trips.length === 0 ? 'Where to next?' : 'Pick up where you left off, or start a new adventure.'}
             </p>
