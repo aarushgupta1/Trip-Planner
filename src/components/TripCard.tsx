@@ -158,9 +158,9 @@ export default function TripCard({
               <div className="font-mono text-[11px] tracking-[0.08em] text-[var(--accent)]">
                 {passengers.length === 1 ? 'PASSENGER' : `PASSENGERS · ${passengers.length}`}
               </div>
-              <div className="mt-1 flex flex-wrap gap-1.5" title={passengers.join(', ')}>
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5" title={passengers.join(', ')}>
                 {pax.shown.map((n, i) => (
-                  <span key={`${n}-${i}`} className="max-w-[12rem] truncate rounded-[3px] border border-[var(--rule)] px-2 pt-0.5 font-hand text-[22px] leading-[1.1]">
+                  <span key={`${n}-${i}`} className="max-w-[12rem] truncate pt-0.5 font-hand text-[22px] leading-[1.1]">
                     {n}
                   </span>
                 ))}
