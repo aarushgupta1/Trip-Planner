@@ -12,13 +12,6 @@ import UserMenu from '@/components/UserMenu';
 
 export const metadata = { title: 'My trips · Trip Planner' };
 
-function tripStatus(start: string, end: string, today: string): { label: string; tone: 'live' | 'soon' | 'past' } {
-  if (today > end) return { label: 'Past', tone: 'past' };
-  if (today >= start) return { label: 'In progress', tone: 'live' };
-  const days = Math.round((new Date(start + 'T12:00:00Z').getTime() - new Date(today + 'T12:00:00Z').getTime()) / 86_400_000);
-  return { label: days === 1 ? 'Starts tomorrow' : `In ${days} days`, tone: 'soon' };
-}
-
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ edit?: string; new?: string }> }) {
   const { edit, new: isNew } = await searchParams;
   const creating = isNew === '1';
@@ -42,7 +35,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       start={t.start_date}
       end={t.end_date}
       days={generateTripDates(t).length}
-      status={tripStatus(t.start_date, t.end_date, today)}
       isOwner={t.is_owner}
       passengers={t.people.map((p) => p.display_name)}
       number={t.ticket_no}

@@ -162,7 +162,6 @@ export default function TripCard({
   start,
   end,
   days,
-  status,
   isOwner,
   passengers,
   number,
@@ -180,7 +179,6 @@ export default function TripCard({
   start: string;
   end: string;
   days: number;
-  status: { label: string; tone: 'live' | 'soon' | 'past' };
   isOwner: boolean;
   passengers: string[]; // everyone on the trip, owner first
   tripType: TripType;
@@ -227,14 +225,10 @@ export default function TripCard({
   const homeStop = home ? { name: home, country: '' } : null;
   const endStop = homeEnd ? { name: homeEnd, country: '' } : homeStop;
   const shown = homeStop && endStop ? [homeStop, ...middle, endStop] : middle;
-  const past = status.tone === 'past';
   const pax = formatPassengers(passengers);
   const bars = barcodeBars(id);
   const barXs = bars.map((_, i) => bars.slice(0, i).reduce((n, w) => n + w + 1, 0));
   const barWidth = bars.reduce((n, w) => n + w + 1, 0);
-  // Red marks what's coming up; finished trips go quiet, and a trip that's
-  // underway takes the blue.
-  const statusColor = past ? 'var(--muted)' : status.tone === 'live' ? 'var(--accent)' : 'var(--red)';
 
   if (editing) {
     return (
@@ -282,12 +276,6 @@ export default function TripCard({
               <div className="font-mono text-[11px] tracking-[0.08em] text-[var(--accent)]">TRIP {number} · {TRIP_TYPE_LABELS[tripType].toUpperCase()}</div>
               <h2 className="mt-0.5 text-base sm:text-[17px] font-semibold leading-snug tracking-tight truncate" title={name}>{name}</h2>
             </div>
-            <span
-              className="shrink-0 mt-1 -rotate-6 rounded-[3px] border-2 px-2 py-[1px] font-mono text-[11px] font-semibold uppercase tracking-[0.08em] whitespace-nowrap opacity-90"
-              style={{ borderColor: statusColor, color: statusColor }}
-            >
-              {past ? 'Completed' : status.tone === 'live' ? 'Underway' : status.label}
-            </span>
           </div>
 
           {/* route */}
