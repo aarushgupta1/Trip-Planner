@@ -102,6 +102,7 @@ body {
   --blue: #1f4fd8;
   --red: #d92d20;
   --accent: #1f4fd8;
+  --perf: #98a2b3;
   --notch: 7px;
   --stub-h: 84px; /* stacked layout: stub height */
   --stub-w: 108px; /* side-by-side layout: stub width */
@@ -118,6 +119,7 @@ body {
   --blue: #7b9cf5;
   --red: #f97066;
   --accent: #7b9cf5;
+  --perf: #667085;
   filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5));
 }
 .ticket-ski { --accent: #7c3aed; --stub: #f4f0fd; }
@@ -155,7 +157,7 @@ body {
 
 .ticket-stub {
   position: relative;
-  border-top: 1px dashed var(--rule);
+  border-top: 2px dashed var(--perf);
   background: var(--stub);
 }
 
@@ -193,7 +195,7 @@ body {
   }
   .ticket-stub {
     border-top: 0;
-    border-left: 1px dashed var(--rule);
+    border-left: 2px dashed var(--perf);
   }
 }
 
@@ -204,6 +206,9 @@ body {
 }
 .ticket-editing:hover {
   transform: none;
+}
+.ticket-editing:focus-within {
+  outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

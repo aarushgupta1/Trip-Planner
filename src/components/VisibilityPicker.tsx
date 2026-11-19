@@ -23,8 +23,15 @@ export default function VisibilityPicker({
   canChange: boolean;
   disabled?: boolean;
 }) {
-  // Nothing to choose when you're the only one on the trip.
-  if (people.length < 2) return null;
+  // Nothing to choose yet when you're the only one on the trip.
+  if (people.length < 2) {
+    return (
+      <div>
+        <span className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Who can see this</span>
+        <p className="text-xs text-gray-400 dark:text-gray-500">Only you are on this trip. Share the trip to choose who sees each event.</p>
+      </div>
+    );
+  }
 
   const others = people.filter((p) => p.user_id !== currentUserId);
   const selectedOthers = value ? value.filter((id) => id !== currentUserId) : [];

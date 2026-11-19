@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { X, Plus, CalendarRange, Globe2, AlertTriangle, Check, Copy, Share2, UserPlus } from 'lucide-react';
+import { X, Plus, CalendarRange, Globe2, AlertTriangle, Check, Copy, Share2 } from 'lucide-react';
 import CitySearch from './CitySearch';
 import { createTrip, createInvite, updateTrip, CitySuggestion } from '@/app/trips/actions';
 import { CityInput, TripInput, validateTripInput, MAX_CITIES } from '@/lib/tripInput';
@@ -72,7 +72,6 @@ export default function TripForm({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   // Create mode only: make an invite link as the trip is created.
-  const [shareAfter, setShareAfter] = useState(false);
   const [created, setCreated] = useState<{ id: string; link: string } | null>(null);
   const [copied, setCopied] = useState(false);
   // The link itself only appears if the browser refuses to copy it.
@@ -141,6 +140,11 @@ export default function TripForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    submit(false);
+  };
+
+  // `share`: after creating the trip, go straight to the invite/share screen.
+  const submit = (share: boolean) => {
     const input: TripInput = {
       name,
       start_date: startDate,
@@ -162,7 +166,7 @@ export default function TripForm({
         return;
       }
       const id = mode === 'create' ? (result as { id: string }).id : tripId!;
-      if (mode === 'create' && shareAfter) {
+      if (mode === 'create' && share) {
         const invite = await createInvite(id);
         // If the link can't be made, the trip still exists — carry on to it;
         // sharing is available from the trip page.
@@ -441,26 +445,6 @@ export default function TripForm({
         </p>
       </div>
 
-      {mode === 'create' && (
-        <label className="flex items-start gap-2.5 rounded-xl border border-gray-200 dark:border-gray-700 px-3.5 py-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={shareAfter}
-            onChange={(e) => setShareAfter(e.target.checked)}
-            className="mt-0.5 h-4 w-4"
-          />
-          <span className="text-sm">
-            <span className="flex items-center gap-1.5 font-medium text-gray-800 dark:text-gray-100">
-              <UserPlus size={14} />
-              Plan this trip with others
-            </span>
-            <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
-              Get an invite link as soon as the trip is created.
-            </span>
-          </span>
-        </label>
-      )}
-
       {mode === 'edit' && (
         <div className="flex items-start gap-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3.5 py-2.5 text-xs text-amber-800 dark:text-amber-300">
           <AlertTriangle size={14} className="shrink-0 mt-0.5" />
@@ -498,6 +482,18 @@ export default function TripForm({
           {mode === 'create' && <Plus size={15} />}
           {isPending ? 'Saving…' : mode === 'create' ? 'Create trip' : 'Save changes'}
         </button>
+        {mode === 'create' && (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => submit(true)}
+            title="Create the trip and get a link to invite others"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 border border-blue-600/40 text-blue-600 dark:text-blue-400 hover:bg-blue-600/10 disabled:opacity-50 rounded-xl text-sm font-semibold transition-colors"
+          >
+            <Share2 size={15} />
+            Create and share
+          </button>
+        )}
       </div>
     </form>
   );
