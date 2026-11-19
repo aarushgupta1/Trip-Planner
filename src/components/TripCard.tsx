@@ -241,7 +241,7 @@ export default function TripCard({
               <h2 className="mt-0.5 text-base sm:text-[17px] font-semibold leading-snug tracking-tight truncate" title={name}>{name}</h2>
             </div>
             <span
-              className="shrink-0 mt-0.5 rounded-[2px] border px-2 py-[2px] text-[11px] font-medium whitespace-nowrap"
+              className="shrink-0 mt-1 -rotate-6 rounded-[3px] border-2 px-2 py-[1px] font-mono text-[11px] font-semibold uppercase tracking-[0.08em] whitespace-nowrap opacity-90"
               style={{ borderColor: statusColor, color: statusColor }}
             >
               {past ? 'Completed' : status.tone === 'live' ? 'Underway' : status.label}
