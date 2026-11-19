@@ -19,7 +19,7 @@ export default function AuthShell({
   footer?: React.ReactNode;
 }) {
   return (
-    <main className="min-h-dvh flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4 py-10">
+    <main className="min-h-dvh flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-center gap-2 mb-6">
           <BrandMark size={26} />

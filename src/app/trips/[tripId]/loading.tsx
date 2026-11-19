@@ -2,7 +2,7 @@
 // changes immediately instead of sitting on the old page.
 export default function Loading() {
   return (
-    <main className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-950" aria-busy="true" aria-label="Loading trip">
+    <main className="h-dvh flex flex-col" aria-busy="true" aria-label="Loading trip">
       <header className="h-14 shrink-0 border-b border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-900 flex items-center gap-3">
         <div className="h-5 w-5 rounded bg-gray-200 dark:bg-gray-800" />
         <div className="h-4 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />

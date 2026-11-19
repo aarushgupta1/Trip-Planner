@@ -33,7 +33,7 @@ export default async function EditTripPage({ params }: { params: Promise<{ tripI
   };
 
   return (
-    <main className="min-h-dvh bg-gray-50 dark:bg-gray-950 px-4 py-8">
+    <main className="min-h-dvh px-4 py-8">
       <div className="mx-auto max-w-lg">
         <Link href={`/trips/${tripId}`} className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 mb-4">
           <ChevronLeft size={15} />

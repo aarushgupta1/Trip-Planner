@@ -38,7 +38,7 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
   const displayName = (user?.user_metadata?.full_name as string | undefined)?.trim() || user?.email?.split('@')[0] || 'Someone';
 
   return (
-    <main className="h-dvh flex flex-col bg-gray-50 dark:bg-gray-950">
+    <main className="h-dvh flex flex-col">
       <header className="h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between gap-2 px-3 sm:px-5 shrink-0 shadow-sm">
         <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1">
           <Link
