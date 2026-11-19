@@ -103,6 +103,20 @@ describe('effectiveHomeTimezone', () => {
   it('uses the person’s own city time zone when set, else the trip default', () => {
     const base = { home_timezone: 'America/New_York' };
     expect(effectiveHomeTimezone({ ...base, my_origin: null })).toBe('America/New_York');
-    expect(effectiveHomeTimezone({ ...base, my_origin: { name: 'London', country: 'UK', country_code: 'GB', lat: 51.5, lng: 0, timezone: 'Europe/London' } })).toBe('Europe/London');
+    expect(effectiveHomeTimezone({ ...base, my_origin: { name: 'London', country: 'UK', country_code: 'GB', lat: 51.5, lng: 0, timezone: 'Europe/London', end: null } })).toBe('Europe/London');
+  });
+});
+
+import { originFromRow } from '@/lib/trip';
+describe('originFromRow', () => {
+  const start = { name: 'Boston', country: 'US', country_code: 'US', lat: 42.36, lng: -71.06, timezone: 'America/New_York' };
+  const noEnd = { end_name: null, end_country: null, end_country_code: null, end_lat: null, end_lng: null, end_timezone: null };
+  it('ends where it started when no end city is stored', () => {
+    expect(originFromRow({ ...start, ...noEnd }).end).toBeNull();
+  });
+  it('returns a separate end city when one is stored', () => {
+    const o = originFromRow({ ...start, end_name: 'Chicago', end_country: 'US', end_country_code: 'US', end_lat: 41.88, end_lng: -87.63, end_timezone: 'America/Chicago' });
+    expect(o.end?.name).toBe('Chicago');
+    expect(o.end?.timezone).toBe('America/Chicago');
   });
 });

@@ -541,6 +541,13 @@ create table if not exists trip_origins (
   timezone     text not null,
   primary key (trip_id, user_id)
 );
+-- Optional different end of the trip (all null = ends where it started).
+alter table trip_origins add column if not exists end_name text;
+alter table trip_origins add column if not exists end_country text;
+alter table trip_origins add column if not exists end_country_code text;
+alter table trip_origins add column if not exists end_lat double precision;
+alter table trip_origins add column if not exists end_lng double precision;
+alter table trip_origins add column if not exists end_timezone text;
 alter table trip_origins enable row level security;
 drop policy if exists "own_origin" on trip_origins;
 create policy "own_origin" on trip_origins for all to authenticated

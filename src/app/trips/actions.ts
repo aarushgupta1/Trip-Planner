@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServer, getCurrentUser, isSupabaseConfigured } from '@/lib/supabase/server';
-import { Trip, TripCity, TripOrigin, toTrip } from '@/lib/trip';
+import { Trip, TripCity, TripOrigin, TripPlace, ORIGIN_COLUMNS, originFromRow, toTrip } from '@/lib/trip';
 import { TripInput, validateTripInput, isValidTimeZone } from '@/lib/tripInput';
 
 export interface CitySuggestion {
@@ -70,9 +70,11 @@ export async function getTrips(): Promise<(SharedTrip & { people: TripPerson[]; 
     supabase.rpc('get_my_trip_people'),
     // Row Level Security returns only your own start/end cities. A failure
     // (e.g. before the schema update) just means everyone uses the trip default.
-    supabase.from('trip_origins').select('trip_id, name, country, country_code, lat, lng, timezone'),
+    supabase.from('trip_origins').select(`trip_id, ${ORIGIN_COLUMNS}`),
   ]);
-  const origins = new Map(((originRows ?? []) as (TripOrigin & { trip_id: string })[]).map((o) => [o.trip_id, o]));
+  const origins = new Map(
+    ((originRows ?? []) as unknown as ({ trip_id: string } & Parameters<typeof originFromRow>[0])[]).map((o) => [o.trip_id, originFromRow(o)])
+  );
   if (error) throw new Error(error.message);
 
   // Everyone on each trip, owner first. A failure here just means tickets
@@ -105,35 +107,48 @@ export async function getTrip(id: string): Promise<SharedTrip | null> {
   const [user, { data: row }, { data: originRow }] = await Promise.all([
     getCurrentUser(),
     supabase.from('trips').select(`${TRIP_COLUMNS}, trip_cities(*)`).eq('id', id).maybeSingle(),
-    supabase.from('trip_origins').select('name, country, country_code, lat, lng, timezone').eq('trip_id', id).maybeSingle(),
+    supabase.from('trip_origins').select(ORIGIN_COLUMNS).eq('trip_id', id).maybeSingle(),
   ]);
   if (!row) return null;
   const r = row as TripRow & { trip_cities: TripCity[] };
-  return { ...toTrip(r, r.trip_cities ?? []), my_origin: (originRow as TripOrigin | null) ?? null, is_owner: r.owner_id === user?.id };
+  return { ...toTrip(r, r.trip_cities ?? []), my_origin: originRow ? originFromRow(originRow as unknown as Parameters<typeof originFromRow>[0]) : null, is_owner: r.owner_id === user?.id };
 }
 
-// Sets (or, with null, clears) where the signed-in person starts and ends
-// this trip. Everyone sets their own; it never affects anyone else.
-export async function setMyOrigin(tripId: string, city: CitySuggestion | null): Promise<{ ok: true } | { error: string }> {
+// Sets (or, with a null start, clears) where the signed-in person starts and
+// ends this trip. `end` null means they end where they started. Everyone sets
+// their own; it never affects anyone else.
+function validPlace(c: TripPlace): boolean {
+  return !!c.name.trim() && Number.isFinite(c.lat) && Number.isFinite(c.lng) && isValidTimeZone(c.timezone);
+}
+
+export async function setMyOrigin(
+  tripId: string,
+  start: TripPlace | null,
+  end: TripPlace | null
+): Promise<{ ok: true } | { error: string }> {
   const supabase = await createSupabaseServer();
   const user = await getCurrentUser();
   if (!user) return { error: 'You need to sign in again.' };
-  if (!city) {
+  if (!start) {
     const { error } = await supabase.from('trip_origins').delete().eq('trip_id', tripId).eq('user_id', user.id);
     if (error) return { error: error.message };
   } else {
-    if (!city.name.trim() || !Number.isFinite(city.lat) || !Number.isFinite(city.lng) || !isValidTimeZone(city.timezone)) {
-      return { error: 'Pick a city from the search results.' };
-    }
+    if (!validPlace(start) || (end && !validPlace(end))) return { error: 'Pick a city from the search results.' };
     const { error } = await supabase.from('trip_origins').upsert({
       trip_id: tripId,
       user_id: user.id,
-      name: city.name.trim(),
-      country: city.country,
-      country_code: city.country_code.toUpperCase(),
-      lat: city.lat,
-      lng: city.lng,
-      timezone: city.timezone,
+      name: start.name.trim(),
+      country: start.country,
+      country_code: start.country_code.toUpperCase(),
+      lat: start.lat,
+      lng: start.lng,
+      timezone: start.timezone,
+      end_name: end ? end.name.trim() : null,
+      end_country: end ? end.country : null,
+      end_country_code: end ? end.country_code.toUpperCase() : null,
+      end_lat: end ? end.lat : null,
+      end_lng: end ? end.lng : null,
+      end_timezone: end ? end.timezone : null,
     });
     if (error) return { error: error.message };
   }

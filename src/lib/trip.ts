@@ -20,13 +20,44 @@ export interface TripCity {
 }
 
 // Where one person starts and ends the trip (their own city).
-export interface TripOrigin {
+export interface TripPlace {
   name: string;
   country: string;
   country_code: string;
   lat: number;
   lng: number;
   timezone: string;
+}
+
+// `end` is null when the person ends the trip where they started it.
+export interface TripOrigin extends TripPlace {
+  end: TripPlace | null;
+}
+
+type OriginRow = TripPlace & {
+  end_name: string | null;
+  end_country: string | null;
+  end_country_code: string | null;
+  end_lat: number | null;
+  end_lng: number | null;
+  end_timezone: string | null;
+};
+
+export const ORIGIN_COLUMNS = 'name, country, country_code, lat, lng, timezone, end_name, end_country, end_country_code, end_lat, end_lng, end_timezone';
+
+export function originFromRow(r: OriginRow): TripOrigin {
+  const hasEnd = !!r.end_name && r.end_lat != null && r.end_lng != null && !!r.end_timezone;
+  return {
+    name: r.name,
+    country: r.country,
+    country_code: r.country_code,
+    lat: r.lat,
+    lng: r.lng,
+    timezone: r.timezone,
+    end: hasEnd
+      ? { name: r.end_name!, country: r.end_country ?? '', country_code: r.end_country_code ?? '', lat: r.end_lat!, lng: r.end_lng!, timezone: r.end_timezone! }
+      : null,
+  };
 }
 
 export interface Trip {

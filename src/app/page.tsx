@@ -48,7 +48,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       number={t.ticket_no}
       tripType={t.trip_type}
       home={t.my_origin?.name ?? homeCityFromTimezone(t.home_timezone)}
-      hasOwnHome={!!t.my_origin}
+      homeEnd={t.my_origin?.end?.name ?? t.my_origin?.name ?? homeCityFromTimezone(t.home_timezone)}
+      myStart={t.my_origin ? { name: t.my_origin.name, country: t.my_origin.country, country_code: t.my_origin.country_code, lat: t.my_origin.lat, lng: t.my_origin.lng, timezone: t.my_origin.timezone } : null}
+      myEnd={t.my_origin?.end ?? null}
       startEditing={t.is_owner && edit === t.id}
       initial={{
         name: t.name,

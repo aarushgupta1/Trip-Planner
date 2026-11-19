@@ -11,6 +11,7 @@ import { setMyOrigin } from '@/app/trips/actions';
 import type { TripInput } from '@/lib/tripInput';
 import { deleteTrip } from '@/app/trips/actions';
 import { TripType, TRIP_TYPE_LABELS } from '@/lib/utils';
+import type { TripPlace } from '@/lib/trip';
 import { barcodeBars, cityCode, formatPassengers } from '@/lib/ticket';
 
 const MAX_STOPS_SHOWN = 3; // destinations shown between the start and end
@@ -33,6 +34,113 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
+function HomeEditor({
+  tripId,
+  home,
+  homeEnd,
+  myStart,
+  myEnd,
+}: {
+  tripId: string;
+  home: string;
+  homeEnd: string;
+  myStart: TripPlace | null;
+  myEnd: TripPlace | null;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [dStart, setDStart] = useState<TripPlace | null>(myStart);
+  const [dEnd, setDEnd] = useState<TripPlace | null>(myEnd); // null = same as start
+  const [picking, setPicking] = useState<'start' | 'end' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const openEditor = () => {
+    setDStart(myStart);
+    setDEnd(myEnd);
+    setPicking(null);
+    setError(null);
+    setOpen(true);
+  };
+
+  const save = (start: TripPlace | null, end: TripPlace | null) => {
+    setError(null);
+    startTransition(async () => {
+      const result = await setMyOrigin(tripId, start, end);
+      if ('error' in result) setError(result.error);
+      else {
+        setOpen(false);
+        router.refresh();
+      }
+    });
+  };
+
+  const link = 'hover:text-[var(--accent)] underline-offset-2 hover:underline';
+  const different = homeEnd !== home;
+
+  return (
+    <div className="pointer-events-auto relative z-10 mt-2 text-[11px] text-[var(--muted)]">
+      {!open ? (
+        <button
+          type="button"
+          onClick={openEditor}
+          title="Change where you start and end this trip (only changes it for you)"
+          className="inline-flex items-center gap-1 hover:text-[var(--accent)]"
+        >
+          <Pencil size={11} />
+          {different ? `Starting in ${home || 'your city'} · Ending in ${homeEnd}` : `Starting & ending in ${home || 'your city'}`}
+        </button>
+      ) : (
+        <div className={['max-w-xs space-y-2', pending ? 'opacity-60 pointer-events-none' : ''].join(' ')}>
+          <div>
+            <div className="mb-0.5">Starting from</div>
+            {picking === 'start' ? (
+              <CitySearch autoFocus onSelect={(c) => { setDStart(c); setPicking(null); }} placeholder="Search for a city…" />
+            ) : (
+              <div className="flex items-center gap-2 text-[var(--ink)]">
+                <span className="font-medium">{dStart ? dStart.name : `${home || 'Trip default'} (trip default)`}</span>
+                <button type="button" onClick={() => setPicking('start')} className={`text-[var(--muted)] ${link}`}>Change</button>
+              </div>
+            )}
+          </div>
+
+          {dStart ? (
+            <div>
+              <div className="mb-0.5">Ending in</div>
+              {picking === 'end' ? (
+                <CitySearch autoFocus onSelect={(c) => { setDEnd(c); setPicking(null); }} placeholder="Search for a city…" />
+              ) : (
+                <div className="flex items-center gap-2 text-[var(--ink)]">
+                  <span className="font-medium">{dEnd ? dEnd.name : `${dStart.name} (same as start)`}</span>
+                  <button type="button" onClick={() => setPicking('end')} className={`text-[var(--muted)] ${link}`}>Change</button>
+                  {dEnd && <button type="button" onClick={() => setDEnd(null)} className={`text-[var(--muted)] ${link}`}>Same as start</button>}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p>Pick your own starting city to choose a different end.</p>
+          )}
+
+          <div className="flex items-center gap-3 pt-0.5">
+            <button
+              type="button"
+              onClick={() => save(dStart, dStart ? dEnd : null)}
+              className="rounded-[3px] bg-[var(--accent)] px-2.5 py-1 text-[11px] font-semibold text-white"
+            >
+              Save
+            </button>
+            {(myStart || myEnd) && (
+              <button type="button" onClick={() => save(null, null)} className={link}>Use the trip default</button>
+            )}
+            <button type="button" onClick={() => setOpen(false)} className={link}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {error && <p className="mt-1 text-red-600 dark:text-red-400">{error}</p>}
+    </div>
+  );
+}
+
 export default function TripCard({
   id,
   name,
@@ -46,7 +154,9 @@ export default function TripCard({
   number,
   tripType,
   home,
-  hasOwnHome,
+  homeEnd,
+  myStart,
+  myEnd,
   initial,
   startEditing = false,
 }: {
@@ -60,8 +170,10 @@ export default function TripCard({
   isOwner: boolean;
   passengers: string[]; // everyone on the trip, owner first
   tripType: TripType;
-  home: string; // where this person starts and ends the trip (the same place for now)
-  hasOwnHome: boolean; // they've picked it themselves (vs. the trip's default)
+  home: string; // where this person starts the trip
+  homeEnd: string; // where this person ends it (often the same place)
+  myStart: TripPlace | null; // their own picks (null = the trip default)
+  myEnd: TripPlace | null; // null = ends where they started
   initial: TripInput; // current settings, for editing in place
   startEditing?: boolean;
   number: number; // 1 for your first trip, 2 for the next, and so on
@@ -74,22 +186,8 @@ export default function TripCard({
     if (startEditing) editRef.current?.scrollIntoView({ block: 'start' });
   }, [startEditing]);
   const [confirming, setConfirming] = useState(false);
-  const [changingHome, setChangingHome] = useState(false);
-  const [homeError, setHomeError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  const saveHome = (city: Parameters<typeof setMyOrigin>[1]) => {
-    setHomeError(null);
-    startTransition(async () => {
-      const result = await setMyOrigin(id, city);
-      if ('error' in result) setHomeError(result.error);
-      else {
-        setChangingHome(false);
-        router.refresh();
-      }
-    });
-  };
 
   const handleDelete = () => {
     setConfirming(false);
@@ -107,7 +205,8 @@ export default function TripCard({
   const middle = stops.length > MAX_STOPS_SHOWN ? stops.slice(0, MAX_STOPS_SHOWN - 1).concat(stops[stops.length - 1]) : stops;
   const hidden = stops.length - middle.length;
   const homeStop = home ? { name: home, country: '' } : null;
-  const shown = homeStop ? [homeStop, ...middle, homeStop] : middle;
+  const endStop = homeEnd ? { name: homeEnd, country: '' } : homeStop;
+  const shown = homeStop && endStop ? [homeStop, ...middle, endStop] : middle;
   const past = status.tone === 'past';
   const pax = formatPassengers(passengers);
   const bars = barcodeBars(id);
@@ -169,35 +268,8 @@ export default function TripCard({
             ))}
           </div>
 
-          {/* Each person picks their own start/end city; others never see this. */}
-          <div className="pointer-events-auto relative z-10 mt-2 text-[11px] text-[var(--muted)]">
-            {changingHome ? (
-              <div className="max-w-xs space-y-1.5">
-                <CitySearch autoFocus onSelect={(city) => saveHome(city)} placeholder="Where do you start and end this trip?" />
-                <div className="flex items-center gap-3">
-                  {hasOwnHome && (
-                    <button type="button" onClick={() => saveHome(null)} className="hover:text-[var(--accent)] underline-offset-2 hover:underline">
-                      Use the trip default
-                    </button>
-                  )}
-                  <button type="button" onClick={() => setChangingHome(false)} className="hover:text-[var(--accent)] underline-offset-2 hover:underline">
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setChangingHome(true)}
-                title="Change where you start and end this trip (only changes it for you)"
-                className="inline-flex items-center gap-1 hover:text-[var(--accent)]"
-              >
-                <Pencil size={11} />
-                Starting & ending in {home || 'your city'}
-              </button>
-            )}
-            {homeError && <p className="mt-1 text-red-600 dark:text-red-400">{homeError}</p>}
-          </div>
+          {/* Each person picks their own start/end cities; others never see this. */}
+          <HomeEditor tripId={id} home={home} homeEnd={homeEnd} myStart={myStart} myEnd={myEnd} />
 
           <div className="mt-4 grid grid-cols-3 gap-3 border-t border-[var(--rule)] pt-2.5">
             <Field label="Depart" value={range(s)} />
