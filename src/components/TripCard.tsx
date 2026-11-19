@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 import TripForm from './TripForm';
 import CitySearch from './CitySearch';
@@ -218,11 +218,28 @@ export default function TripCard({
 
   if (editing) {
     return (
-      <div ref={editRef} className={['ticket ticket-editing scroll-mt-20', `ticket-${tripType}`].join(' ')}>
+      <div ref={editRef} className={['ticket ticket-editing scroll-mt-20', `ticket-${tripType}`, confirming ? 'ticket-locked' : '', isPending ? 'opacity-50 pointer-events-none' : ''].join(' ')}>
         <div className="ticket-paper ticket-paper-editing px-5 py-5 sm:px-6">
           <div className="mb-4 font-mono text-[11px] tracking-[0.08em] text-[var(--accent)]">TRIP {number} · EDIT SETTINGS</div>
-          <TripForm mode="edit" tripId={id} initial={initial} onCancel={() => setEditing(false)} onSaved={() => setEditing(false)} />
+          <TripForm
+            mode="edit"
+            tripId={id}
+            initial={initial}
+            onCancel={() => setEditing(false)}
+            onSaved={() => setEditing(false)}
+            onDelete={() => setConfirming(true)}
+          />
+          {error && <p className="mt-3 text-xs font-medium text-red-600 dark:text-red-400">{error}</p>}
         </div>
+        {confirming && (
+          <ConfirmDialog
+            message={`Delete “${name}”? This permanently removes the trip along with all of its events, lodgings and notes.`}
+            confirmLabel="Delete trip"
+            cancelLabel="Keep it"
+            onConfirm={handleDelete}
+            onCancel={() => setConfirming(false)}
+          />
+        )}
       </div>
     );
   }
@@ -325,13 +342,6 @@ export default function TripCard({
               >
                 <Pencil size={13} />
                 Edit
-              </button>
-              <button
-                onClick={() => setConfirming(true)}
-                title="Delete trip"
-                className="p-1.5 rounded text-[var(--muted)] hover:text-[var(--red)] hover:bg-red-500/10 transition-colors"
-              >
-                <Trash2 size={14} />
               </button>
             </div>
           )}

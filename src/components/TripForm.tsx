@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { X, Plus, CalendarRange, Globe2, AlertTriangle, Check, Copy, Share2 } from 'lucide-react';
+import { X, Plus, Trash2, CalendarRange, Globe2, AlertTriangle, Check, Copy, Share2 } from 'lucide-react';
 import CitySearch from './CitySearch';
 import { createTrip, createInvite, updateTrip, CitySuggestion } from '@/app/trips/actions';
 import { CityInput, TripInput, validateTripInput, MAX_CITIES } from '@/lib/tripInput';
@@ -49,6 +49,7 @@ export default function TripForm({
   initial,
   onCancel,
   onSaved,
+  onDelete,
 }: {
   mode: 'create' | 'edit';
   tripId?: string;
@@ -56,6 +57,8 @@ export default function TripForm({
   // Edit in place (e.g. on a ticket): close instead of navigating away.
   onCancel?: () => void;
   onSaved?: () => void;
+  // With the two above (editing in place): Save, Cancel and Delete sit at the top.
+  onDelete?: () => void;
 }) {
   const router = useRouter();
   const [name, setName] = useState(initial?.name ?? '');
@@ -272,10 +275,44 @@ export default function TripForm({
     );
   }
 
+  // Editing on the ticket itself: the action buttons live at the top.
+  const inPlaceEdit = mode === 'edit' && !!onCancel;
   const backHref = mode === 'edit' && tripId ? `/trips/${tripId}` : '/';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {inPlaceEdit && (
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="submit"
+              disabled={isPending}
+              className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isPending ? 'Saving…' : 'Save changes'}
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              Cancel
+            </button>
+            {onDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
+              >
+                <Trash2 size={14} />
+                Delete trip
+              </button>
+            )}
+          </div>
+          {error && <p className="mt-2 text-xs font-medium text-red-500 dark:text-red-400">{error}</p>}
+        </div>
+      )}
+
       {/* Name */}
       <div>
         <label htmlFor="trip-name" className={labelClass}>Trip name</label>
@@ -449,14 +486,14 @@ export default function TripForm({
         <div className="flex items-start gap-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3.5 py-2.5 text-xs text-amber-800 dark:text-amber-300">
           <AlertTriangle size={14} className="shrink-0 mt-0.5" />
           <span>
-            Changing the dates never deletes anything. Events, lodgings and notes that fall outside the new dates are
-            kept, just hidden until the dates include them again.
+            Changing dates won’t delete anything. Plans outside the new dates are hidden, not lost.
           </span>
         </div>
       )}
 
-      {error && <p className="text-xs text-red-500 dark:text-red-400 font-medium">{error}</p>}
+      {!inPlaceEdit && error && <p className="text-xs text-red-500 dark:text-red-400 font-medium">{error}</p>}
 
+      {!inPlaceEdit && (
       <div className="flex gap-3">
         {onCancel ? (
           <button
@@ -495,6 +532,7 @@ export default function TripForm({
           </button>
         )}
       </div>
+      )}
     </form>
   );
 }
