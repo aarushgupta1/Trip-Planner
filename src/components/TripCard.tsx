@@ -249,6 +249,8 @@ export default function TripCard({
             onCancel={() => setEditing(false)}
             onSaved={() => setEditing(false)}
             onDelete={() => setConfirming(true)}
+            initialStart={myStart}
+            initialEnd={myEnd}
           />
           {error && <p className="mt-3 text-xs font-medium text-red-600 dark:text-red-400">{error}</p>}
         </div>

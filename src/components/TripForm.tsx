@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { X, Plus, Trash2, CalendarRange, Globe2, AlertTriangle, Check, Copy, Share2 } from 'lucide-react';
@@ -8,6 +8,8 @@ import CitySearch, { describeCity } from './CitySearch';
 import { createTrip, createInvite, updateTrip, setMyOrigin, CitySuggestion } from '@/app/trips/actions';
 import { CityInput, TripInput, validateTripInput, MAX_CITIES } from '@/lib/tripInput';
 import { datesInRange, formatDateRange, formatDateShort, TRIP_TYPES, TRIP_TYPE_LABELS, TripType } from '@/lib/utils';
+import type { TripPlace } from '@/lib/trip';
+import { homeCityFromTimezone } from '@/lib/ticket';
 import { canNativeShare, inviteMessage, shareInvite } from '@/lib/share';
 
 const inputClass =
@@ -61,6 +63,8 @@ export default function TripForm({
   onCancel,
   onSaved,
   onDelete,
+  initialStart,
+  initialEnd,
 }: {
   mode: 'create' | 'edit';
   tripId?: string;
@@ -70,6 +74,9 @@ export default function TripForm({
   onSaved?: () => void;
   // With the two above (editing in place): Save, Cancel and Delete sit at the top.
   onDelete?: () => void;
+  // Editing: this person's current starting and ending cities, if they set them.
+  initialStart?: TripPlace | null;
+  initialEnd?: TripPlace | null;
 }) {
   const router = useRouter();
   const [name, setName] = useState(initial?.name ?? '');
@@ -78,13 +85,13 @@ export default function TripForm({
   const [endDate, setEndDate] = useState(initial?.end_date ?? '');
   // '' = "use this device's time zone", resolved when saving (so the server
   // render and the browser never disagree about it).
-  const [homeTimezone, setHomeTimezone] = useState(initial?.home_timezone ?? '');
   // Creating a trip: where this person starts and ends it (each person can
   // set their own later, on their ticket). Ending is "the same place" unless
   // they say otherwise.
-  const [startCity, setStartCity] = useState<CitySuggestion | null>(null);
-  const [endCity, setEndCity] = useState<CitySuggestion | null>(null);
-  const [endElsewhere, setEndElsewhere] = useState(false);
+  const asSuggestion = (p: TripPlace | null | undefined): CitySuggestion | null => (p ? { ...p, admin1: '' } : null);
+  const [startCity, setStartCity] = useState<CitySuggestion | null>(() => asSuggestion(initialStart));
+  const [endCity, setEndCity] = useState<CitySuggestion | null>(() => asSuggestion(initialEnd));
+  const [endElsewhere, setEndElsewhere] = useState(!!initialEnd);
   const [stops, setStops] = useState<StopDraft[]>(() => (initial?.cities ?? []).map((c) => ({ ...c, key: newKey() })));
   // Once someone edits a stop's dates by hand we stop auto-spreading days
   // across stops (it would overwrite their work).
@@ -96,11 +103,6 @@ export default function TripForm({
   const [copied, setCopied] = useState(false);
   // The link itself only appears if the browser refuses to copy it.
   const [showLink, setShowLink] = useState(false);
-
-  const timeZones = useMemo(() => {
-    const fn = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf;
-    return fn ? fn('timeZone') : ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Asia/Tokyo', 'Australia/Sydney'];
-  }, []);
 
   const tripDays = startDate && endDate && endDate >= startDate ? datesInRange(startDate, endDate).length : 0;
   const hasRange = tripDays > 0;
@@ -156,7 +158,7 @@ export default function TripForm({
     setStops((prev) => prev.map((s) => (s.key === key ? { ...s, [field]: value } : s)));
   };
 
-  const resolveHomeTimezone = () => startCity?.timezone || homeTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const resolveHomeTimezone = () => startCity?.timezone || initial?.home_timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,7 +190,8 @@ export default function TripForm({
       const id = mode === 'create' ? (result as { id: string }).id : tripId!;
       // Save this person's own start/end cities. If it somehow fails the trip
       // still exists; they can set it from the ticket.
-      if (mode === 'create' && startCity) await setMyOrigin(id, startCity, endElsewhere ? endCity : null).catch(() => null);
+      if (startCity) await setMyOrigin(id, startCity, endElsewhere ? endCity : null).catch(() => null);
+      else if (mode === 'edit' && initialStart) await setMyOrigin(id, null, null).catch(() => null); // cleared: back to the trip default
       if (mode === 'create' && share) {
         const invite = await createInvite(id);
         // If the link can't be made, the trip still exists — carry on to it;
@@ -490,18 +493,20 @@ export default function TripForm({
         </p>
       </div>
 
-      {/* Where you start and end (create) / home time zone (edit) */}
-      {mode === 'create' ? (
+      {/* Where this person starts and ends the trip */}
+      {(
         <div className="space-y-4">
           <div>
-            <span className={labelClass}>Where are you travelling from? <span className="text-red-400">*</span></span>
+            <span className={labelClass}>Where are you travelling from?{mode === 'create' && <span className="text-red-400"> *</span>}</span>
             {startCity ? (
               <CityChip city={startCity} onClear={() => { setStartCity(null); setEndCity(null); setEndElsewhere(false); }} />
             ) : (
               <CitySearch onSelect={setStartCity} placeholder="Search for your starting city" />
             )}
             <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
-              Shown on your ticket, and flights show times in your home time.
+              {mode === 'edit' && !startCity
+                ? `Currently using the trip default (${homeCityFromTimezone(initial?.home_timezone ?? '')}). Pick any city to change it.`
+                : 'Shown on your ticket, and flights show times in your home time.'}
             </p>
           </div>
 
@@ -528,26 +533,6 @@ export default function TripForm({
             </div>
           )}
         </div>
-      ) : (
-      <div>
-        <label htmlFor="home-tz" className={labelClass}>Where are you travelling from?</label>
-        <select
-          id="home-tz"
-          value={homeTimezone}
-          onChange={(e) => setHomeTimezone(e.target.value)}
-          suppressHydrationWarning
-          className={inputClass}
-        >
-          <option value="">This device’s time zone</option>
-          {timeZones.map((tz) => (
-            <option key={tz} value={tz}>{tz.replace(/_/g, ' ')}</option>
-          ))}
-        </select>
-        <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
-          Lets flights show departure and arrival times in your home time as well as local time.
-        </p>
-      </div>
-
       )}
 
       {mode === 'edit' && (
