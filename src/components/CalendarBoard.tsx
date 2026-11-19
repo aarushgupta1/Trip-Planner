@@ -48,12 +48,13 @@ import AttractionBlock from './AttractionBlock';
 import EditModal from './EditModal';
 import CreateModal from './CreateModal';
 import GuidePanel from './GuidePanel';
+import AeroPlaneIcon from './AeroPlaneIcon';
 import type { GuideSuggestion } from '@/lib/guide';
 import NotificationsMenu from './NotificationsMenu';
 import FlightPathIcon from './FlightPathIcon';
 import ThemeToggle from './ThemeToggle';
 import TimeLabels from './TimeLabels';
-import { Pencil, PanelLeftOpen, WifiOff, CalendarDays, ArrowRight, Plane, Clock, Map as MapIcon } from 'lucide-react';
+import { Pencil, PanelLeftOpen, WifiOff, CalendarDays, ArrowRight, Clock, Map as MapIcon } from 'lucide-react';
 
 // Leaflet touches `window`/`document` at import time, so it can only ever
 // load on the client — ssr: false keeps it (and its CSS) out of the server
@@ -967,7 +968,7 @@ export default function CalendarBoard({
                   title="Ask Aero: questions, ideas and an itinerary check"
                 >
                   Ask
-                  <Plane size={13} className="rotate-45" />
+                  <AeroPlaneIcon size={13} />
                   Aero
                 </button>
                 {/* Jump to today — only relevant while the trip is actually underway */}
