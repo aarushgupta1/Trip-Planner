@@ -173,7 +173,7 @@ export default function TripForm({
       trip_type: tripType,
       cities: stops.map(({ key: _key, ...rest }) => { void _key; return rest; }),
     };
-    const problem = validateTripInput(input);
+    const problem = validateTripInput(input) ?? (mode === 'create' && !startCity ? 'Choose where you’re travelling from.' : null);
     if (problem) {
       setError(problem);
       return;
@@ -494,14 +494,14 @@ export default function TripForm({
       {mode === 'create' ? (
         <div className="space-y-4">
           <div>
-            <span className={labelClass}>Where are you travelling from?</span>
+            <span className={labelClass}>Where are you travelling from? <span className="text-red-400">*</span></span>
             {startCity ? (
               <CityChip city={startCity} onClear={() => { setStartCity(null); setEndCity(null); setEndElsewhere(false); }} />
             ) : (
               <CitySearch onSelect={setStartCity} placeholder="Search for your starting city" />
             )}
             <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
-              Optional. Shown on your ticket, and flights show times in your home time.
+              Shown on your ticket, and flights show times in your home time.
             </p>
           </div>
 
