@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Luggage, Plus, Users, X } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
 import { addPackingItem, deletePackingItem, getPackingItems, setItemShared, setPacked } from '@/app/packing/actions';
@@ -12,7 +12,54 @@ export default function PackingPanel({ tripId, onClose }: { tripId: string; onCl
   const [items, setItems] = useState<PackingItem[] | null>(null);
   const [drafts, setDrafts] = useState<{ shared: string; mine: string }>({ shared: '', mine: '' });
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+
+  // Keeps the screen steady while saving. Every change shows instantly, the
+  // saves for one item run strictly in order, and a reload triggered by
+  // someone else's (or our own) change is ignored if it could be older than
+  // what's on screen. Without this, a reload could land mid-click and flip
+  // the checkbox back and forth.
+  const itemsRef = useRef<PackingItem[] | null>(null);
+  const inFlight = useRef(new Map<string, number>());
+  const chains = useRef(new Map<string, Promise<unknown>>());
+  const lastWriteDone = useRef(0);
+  const needsRefresh = useRef(false);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => { itemsRef.current = items; }, [items]);
+
+  const busy = () => inFlight.current.size > 0;
+
+  const refresh = useCallback(() => {
+    if (busy()) { needsRefresh.current = true; return; }
+    const startedAt = Date.now();
+    getPackingItems(tripId)
+      .then((rows) => {
+        // A save started or finished while this was loading: it may be stale.
+        if (busy() || startedAt < lastWriteDone.current) { needsRefresh.current = true; return; }
+        setItems(rows);
+      })
+      .catch(() => {});
+  }, [tripId]);
+
+  const scheduleRefresh = useCallback(() => {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(refresh, 250);
+  }, [refresh]);
+
+  // Run one save for an item after that item's earlier saves have finished.
+  const save = <T,>(id: string, fn: () => Promise<T>): Promise<T> => {
+    inFlight.current.set(id, (inFlight.current.get(id) ?? 0) + 1);
+    const run = (chains.current.get(id) ?? Promise.resolve())
+      .catch(() => {})
+      .then(() => fn().catch(() => ({ error: "Couldn't save that. Try again." }) as unknown as T));
+    chains.current.set(id, run);
+    const done = () => {
+      const left = (inFlight.current.get(id) ?? 1) - 1;
+      if (left <= 0) { inFlight.current.delete(id); chains.current.delete(id); } else inFlight.current.set(id, left);
+      lastWriteDone.current = Date.now();
+      if (!busy() && needsRefresh.current) { needsRefresh.current = false; scheduleRefresh(); }
+    };
+    return run.finally(done) as Promise<T>;
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -26,14 +73,16 @@ export default function PackingPanel({ tripId, onClose }: { tripId: string; onCl
   useEffect(() => {
     const client = getSupabaseClient();
     if (!client) return;
-    const refresh = () => { getPackingItems(tripId).then(setItems).catch(() => {}); };
     const channel = client
       .channel(`packing-realtime-${tripId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'packing_items', filter: `trip_id=eq.${tripId}` }, refresh)
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'packing_items' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'packing_items', filter: `trip_id=eq.${tripId}` }, scheduleRefresh)
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'packing_items' }, scheduleRefresh)
       .subscribe();
-    return () => { client.removeChannel(channel); };
-  }, [tripId]);
+    return () => {
+      client.removeChannel(channel);
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    };
+  }, [tripId, scheduleRefresh]);
 
   const list = items ?? [];
   const { packed, total } = packedCount(list);
@@ -43,11 +92,15 @@ export default function PackingPanel({ tripId, onClose }: { tripId: string; onCl
   const update = (id: string, patch: Partial<PackingItem>) => setItems((prev) => (prev ?? []).map((i) => (i.id === id ? { ...i, ...patch } : i)));
 
   const toggle = (item: PackingItem) => {
-    update(item.id, { packed: !item.packed });
+    // Flip whatever is on screen right now, so quick repeat clicks alternate cleanly.
+    const current = itemsRef.current?.find((i) => i.id === item.id)?.packed ?? item.packed;
+    const next = !current;
+    update(item.id, { packed: next });
+    itemsRef.current = (itemsRef.current ?? []).map((i) => (i.id === item.id ? { ...i, packed: next } : i));
     setError(null);
-    startTransition(async () => {
-      const r = await setPacked(item.id, !item.packed);
-      if ('error' in r) { update(item.id, { packed: item.packed }); setError(r.error); }
+    save(item.id, () => setPacked(item.id, next)).then((r) => {
+      // Only undo if nothing newer is waiting on this item.
+      if ('error' in r && !inFlight.current.has(item.id)) { update(item.id, { packed: !next }); setError(r.error); }
     });
   };
 
@@ -58,27 +111,25 @@ export default function PackingPanel({ tripId, onClose }: { tripId: string; onCl
     if (!text.trim()) return;
     setError(null);
     setDrafts((d) => ({ ...d, [field]: '' }));
-    startTransition(async () => {
-      const r = await addPackingItem(tripId, text, shared);
+    save('new', () => addPackingItem(tripId, text, shared)).then((r) => {
       if ('error' in r) { setError(r.error); setDrafts((d) => ({ ...d, [field]: text })); }
-      else setItems((prev) => [...(prev ?? []), r.item]);
+      else setItems((prev) => ((prev ?? []).some((i) => i.id === r.item.id) ? prev : [...(prev ?? []), r.item]));
     });
   };
 
   const remove = (item: PackingItem) => {
-    const before = items;
+    const before = itemsRef.current;
     setItems((prev) => (prev ?? []).filter((i) => i.id !== item.id));
-    startTransition(async () => {
-      const r = await deletePackingItem(item.id);
+    save(item.id, () => deletePackingItem(item.id)).then((r) => {
       if ('error' in r) { setItems(before); setError(r.error); }
     });
   };
 
   const toggleShared = (item: PackingItem) => {
-    update(item.id, { shared: !item.shared });
-    startTransition(async () => {
-      const r = await setItemShared(item.id, !item.shared);
-      if ('error' in r) { update(item.id, { shared: item.shared }); setError(r.error); }
+    const next = !item.shared;
+    update(item.id, { shared: next });
+    save(item.id, () => setItemShared(item.id, next)).then((r) => {
+      if ('error' in r && !inFlight.current.has(item.id)) { update(item.id, { shared: !next }); setError(r.error); }
     });
   };
 
@@ -140,7 +191,7 @@ export default function PackingPanel({ tripId, onClose }: { tripId: string; onCl
             />
             <button
               type="submit"
-              disabled={!drafts[field].trim() || isPending}
+              disabled={!drafts[field].trim()}
               aria-label="Add item"
               className="inline-flex items-center rounded-xl bg-blue-600 px-3 text-white hover:bg-blue-700 disabled:opacity-40"
             >
