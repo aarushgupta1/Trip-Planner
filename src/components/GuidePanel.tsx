@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import AeroPlaneIcon from './AeroPlaneIcon';
-import { AlertTriangle, CalendarPlus, Info, Send, Plane, X } from 'lucide-react';
+import { CalendarPlus, Send, X } from 'lucide-react';
 import { askGuide } from '@/app/guide/actions';
-import { Attraction, Hotel } from '@/lib/types';
+import { Attraction } from '@/lib/types';
 import { GuideMessage, GuideSuggestion } from '@/lib/guide';
-import { checkItinerary } from '@/lib/itineraryCheck';
 import { CATEGORY_LABELS, formatDateFull, formatTime } from '@/lib/utils';
 import { useTrip } from './TripProvider';
 
@@ -21,30 +20,21 @@ export default function GuidePanel({
   chatEnabled,
   placesEnabled,
   attractions,
-  hotels,
   onAddSuggestion,
-  onJumpToDate,
   onClose,
 }: {
   tripId: string;
   chatEnabled: boolean;
   placesEnabled: boolean;
   attractions: Attraction[];
-  hotels: Hotel[];
   onAddSuggestion: (s: GuideSuggestion) => void;
-  onJumpToDate: (date: string) => void;
   onClose: () => void;
 }) {
   const { dates } = useTrip();
-  const [tab, setTab] = useState<'ask' | 'check'>('ask');
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState('');
   const [isPending, startTransition] = useTransition();
   const endRef = useRef<HTMLDivElement>(null);
-
-  // Free, instant, no AI — recomputed live as the calendar changes.
-  const issues = useMemo(() => checkItinerary({ dates, attractions, hotels }), [dates, attractions, hotels]);
-  const warnCount = issues.filter((i) => i.severity === 'warn').length;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -56,7 +46,6 @@ export default function GuidePanel({
     const next: ChatTurn[] = [...turns.filter((t) => !t.failed), { role: 'user', content }];
     setTurns(next);
     setInput('');
-    setTab('ask');
     startTransition(async () => {
       const result = await askGuide(tripId, next.map(({ role, content: c }) => ({ role, content: c })));
       setTurns((prev) =>
@@ -75,14 +64,6 @@ export default function GuidePanel({
     'Where should we eat near our lodging?',
   ];
 
-  const fixPrompt =
-    'Please look at these problems with my itinerary and suggest how to fix them:\n' +
-    issues
-      .filter((i) => i.severity === 'warn')
-      .slice(0, 8)
-      .map((i) => `- ${i.message}`)
-      .join('\n');
-
   return (
     <>
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
@@ -95,30 +76,7 @@ export default function GuidePanel({
         </button>
       </div>
 
-      <div className="flex gap-1 border-b border-gray-100 px-3 pt-2 dark:border-gray-800">
-        {(['ask', 'check'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={[
-              '-mb-px border-b-2 px-3 py-1.5 text-xs font-semibold transition-colors',
-              tab === t
-                ? 'border-blue-600 text-gray-900 dark:text-gray-100'
-                : 'border-transparent text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
-            ].join(' ')}
-          >
-            {t === 'ask' ? 'Ask' : 'Itinerary check'}
-            {t === 'check' && warnCount > 0 && (
-              <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
-                {warnCount}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'ask' ? (
-        <>
+      <>
           <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
             {turns.length === 0 && (
               <div>
@@ -132,7 +90,7 @@ export default function GuidePanel({
                 </p>
                 {!chatEnabled && (
                   <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                    Aero’s chat isn’t switched on for this app yet. The itinerary check still works.
+                    Aero’s chat isn’t switched on for this app yet.
                   </p>
                 )}
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -238,46 +196,7 @@ export default function GuidePanel({
               <Send size={16} />
             </button>
           </form>
-        </>
-      ) : (
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          {issues.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">Nothing to flag. Your plan looks solid.</p>
-          ) : (
-            <>
-              <ul className="space-y-2">
-                {issues.map((issue, i) => (
-                  <li key={i}>
-                    <button
-                      onClick={() => issue.date && onJumpToDate(issue.date)}
-                      className="flex w-full items-start gap-2.5 rounded-xl border border-gray-200 px-3 py-2.5 text-left hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                    >
-                      {issue.severity === 'warn' ? (
-                        <AlertTriangle size={15} className="mt-0.5 shrink-0 text-amber-500" />
-                      ) : (
-                        <Info size={15} className="mt-0.5 shrink-0 text-gray-400" />
-                      )}
-                      <span className="min-w-0 text-sm text-gray-700 dark:text-gray-200">
-                        {issue.date && <span className="mb-0.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">{formatDateFull(issue.date)}</span>}
-                        {issue.message}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              {chatEnabled && warnCount > 0 && (
-                <button
-                  onClick={() => send(fixPrompt)}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-                >
-                  Ask Aero how to fix these
-                  <Plane size={14} className="rotate-45" />
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      )}
+      </>
     </>
   );
 }

@@ -971,7 +971,7 @@ export default function CalendarBoard({
                 <button
                   onClick={() => { setShowGuide((v) => !v); setShowPacking(false); setSidebarOpen(false); }}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-blue-600/40 text-blue-600 hover:bg-blue-600/10 text-xs font-semibold transition-colors"
-                  title="Ask Aero: questions, ideas and an itinerary check"
+                  title="Ask Aero: questions and ideas for this trip"
                 >
                   Ask
                   <AeroPlaneIcon size={13} />
@@ -1139,9 +1139,7 @@ export default function CalendarBoard({
           chatEnabled={guideEnabled}
           placesEnabled={placesEnabled}
           attractions={attractions}
-          hotels={hotels}
           onAddSuggestion={setGuideSuggestion}
-          onJumpToDate={(date) => setCurrentPage(pageForDate(TRIP_DATES, date, daysPerPage))}
           onClose={() => setShowGuide(false)}
         />
       </SlideIn>
