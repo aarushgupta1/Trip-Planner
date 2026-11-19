@@ -283,26 +283,32 @@ export default function TripForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       {inPlaceEdit && (
         <div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[10rem] flex-1">
+              <label htmlFor="trip-name" className={labelClass}>Trip name</label>
+              <input
+                id="trip-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') onCancel?.(); }}
+                maxLength={100}
+                className={inputClass}
+                placeholder="e.g. Summer in Italy"
+              />
+            </div>
             <button
               type="submit"
               disabled={isPending}
-              className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
             >
               {isPending ? 'Saving…' : 'Save changes'}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
-              Cancel
             </button>
             {onDelete && (
               <button
                 type="button"
                 onClick={onDelete}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
               >
                 <Trash2 size={14} />
                 Delete trip
@@ -314,6 +320,7 @@ export default function TripForm({
       )}
 
       {/* Name */}
+      {!inPlaceEdit && (
       <div>
         <label htmlFor="trip-name" className={labelClass}>Trip name</label>
         <input
@@ -327,6 +334,7 @@ export default function TripForm({
           autoFocus={mode === 'create'}
         />
       </div>
+      )}
 
       {/* Trip type */}
       <div>
