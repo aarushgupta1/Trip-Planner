@@ -69,7 +69,7 @@ export default function UserMenu({ displayName, email }: { displayName: string; 
         }}
         title={displayName || email}
         aria-label="Account menu"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors"
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-800 text-red-400 text-sm font-bold hover:bg-blue-900 ring-1 ring-blue-400/40 transition-colors"
       >
         {initial || <User size={14} />}
       </button>
