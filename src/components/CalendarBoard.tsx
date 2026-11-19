@@ -858,7 +858,7 @@ export default function CalendarBoard({
 
           {/* Sidebar: always visible on sm+, overlay on mobile */}
           <div className={[
-            'z-50 h-full sm:static absolute top-0 left-0 transition-transform duration-200',
+            'z-50 sm:z-auto h-full sm:static absolute top-0 left-0 transition-transform duration-200',
             sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0',
           ].join(' ')}>
             <HotelsSidebar
@@ -928,14 +928,14 @@ export default function CalendarBoard({
             <div className="flex items-center bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-2 py-1.5 shrink-0">
               {/* Sidebar toggle — only useful on mobile since sidebar is always visible on desktop */}
               <button
-                onClick={() => setSidebarOpen((o) => !o)}
+                onClick={() => { setSidebarOpen((o) => !o); setShowPacking(false); setShowGuide(false); }}
                 className="sm:hidden p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
                 title="Lodging"
               >
                 <PanelLeftOpen size={20} />
               </button>
               <button
-                onClick={() => { setShowPacking((v) => !v); setShowGuide(false); }}
+                onClick={() => { setShowPacking((v) => !v); setShowGuide(false); setSidebarOpen(false); }}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-semibold transition-colors"
                 title="Your packing list"
               >
@@ -968,7 +968,7 @@ export default function CalendarBoard({
 
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => { setShowGuide((v) => !v); setShowPacking(false); }}
+                  onClick={() => { setShowGuide((v) => !v); setShowPacking(false); setSidebarOpen(false); }}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-blue-600/40 text-blue-600 hover:bg-blue-600/10 text-xs font-semibold transition-colors"
                   title="Ask Aero: questions, ideas and an itinerary check"
                 >
