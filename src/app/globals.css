@@ -123,11 +123,11 @@ body {
   --perf: #667085;
   filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5));
 }
-.ticket-ski { --accent: #7c3aed; --stub: #f4f0fd; }
-.ticket-sightseeing { --accent: #ea580c; --stub: #fdf3ea; }
+.ticket-ski { --accent: #2bb3d6; --stub: #ecf9fc; }
+.ticket-sightseeing { --accent: #3b8ff0; --stub: #edf4fe; }
 .ticket-beach { --accent: #0284c7; --stub: #ebf5fb; }
-.dark .ticket-ski { --accent: #a78bfa; --stub: #231d38; }
-.dark .ticket-sightseeing { --accent: #fb923c; --stub: #2e2219; }
+.dark .ticket-ski { --accent: #8be3f5; --stub: #15303a; }
+.dark .ticket-sightseeing { --accent: #7cb8ff; --stub: #172236; }
 .dark .ticket-beach { --accent: #38bdf8; --stub: #172a38; }
 .ticket:hover {
   transform: translateY(-2px);

@@ -213,10 +213,7 @@ export default function PackingPanel({ tripId, onClose }: { tripId: string; onCl
   };
 
   return (
-    <aside
-      className="fixed right-0 top-14 bottom-0 z-40 flex w-full flex-col border-l border-t-2 border-gray-200 border-t-blue-600 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 sm:w-[760px] sm:max-w-[100vw]"
-      aria-label="Packing list"
-    >
+    <>
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
         <div className="flex items-center gap-2">
           <Luggage size={16} className="text-blue-600 dark:text-blue-400" />
@@ -239,6 +236,6 @@ export default function PackingPanel({ tripId, onClose }: { tripId: string; onCl
         {column('Just mine', 'Only you see these. Click the people icon to share one.', false, mineItems)}
       </div>
       {error && <p className="border-t border-gray-100 px-4 py-2 text-xs font-medium text-red-600 dark:border-gray-800 dark:text-red-400">{error}</p>}
-    </aside>
+    </>
   );
 }

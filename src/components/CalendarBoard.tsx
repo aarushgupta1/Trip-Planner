@@ -50,6 +50,7 @@ import CreateModal from './CreateModal';
 import GuidePanel from './GuidePanel';
 import AeroPlaneIcon from './AeroPlaneIcon';
 import PackingPanel from './PackingPanel';
+import SlideIn from './SlideIn';
 import type { GuideSuggestion } from '@/lib/guide';
 import NotificationsMenu from './NotificationsMenu';
 import FlightPathIcon from './FlightPathIcon';
@@ -1128,9 +1129,11 @@ export default function CalendarBoard({
         />
       )}
 
-      {showPacking && <PackingPanel tripId={trip.id} onClose={() => setShowPacking(false)} />}
+      <SlideIn open={showPacking} label="Packing list" storageKey="packing" defaultWidth={520} minWidth={440}>
+        <PackingPanel tripId={trip.id} onClose={() => setShowPacking(false)} />
+      </SlideIn>
 
-      {showGuide && (
+      <SlideIn open={showGuide} label="Aero" storageKey="aero" defaultWidth={400} minWidth={320}>
         <GuidePanel
           tripId={trip.id}
           chatEnabled={guideEnabled}
@@ -1141,7 +1144,7 @@ export default function CalendarBoard({
           onJumpToDate={(date) => setCurrentPage(pageForDate(TRIP_DATES, date, daysPerPage))}
           onClose={() => setShowGuide(false)}
         />
-      )}
+      </SlideIn>
 
       {(createSlot || guideSuggestion) && (
         <CreateModal

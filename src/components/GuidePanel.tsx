@@ -84,10 +84,7 @@ export default function GuidePanel({
       .join('\n');
 
   return (
-    <aside
-      className="fixed right-0 top-14 bottom-0 z-40 flex w-full flex-col border-l border-t-2 border-gray-200 border-t-blue-600 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 sm:w-[400px]"
-      aria-label="Aero"
-    >
+    <>
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Aero</h2>
@@ -281,6 +278,6 @@ export default function GuidePanel({
           )}
         </div>
       )}
-    </aside>
+    </>
   );
 }
