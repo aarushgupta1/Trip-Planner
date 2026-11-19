@@ -191,7 +191,7 @@ export function checkItinerary(input: { dates: string[]; attractions: Attraction
 
   // Nights without a hotel (the last day has no night)
   if (hotels.length === 0) {
-    if (dates.length > 1) issues.push({ severity: 'info', date: '', message: 'No lodging added yet.', attractionIds: [] });
+    if (dates.length > 1) issues.push({ severity: 'info', date: '', message: 'No lodgings added yet.', attractionIds: [] });
   } else {
     const covered = new Set(hotels.flatMap((h) => getHotelDates(h)));
     for (const date of dates.slice(0, -1)) {

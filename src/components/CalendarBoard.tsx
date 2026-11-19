@@ -931,7 +931,7 @@ export default function CalendarBoard({
               <button
                 onClick={() => { setSidebarOpen((o) => !o); setShowPacking(false); setShowGuide(false); }}
                 className="sm:hidden p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
-                title="Lodging"
+                title="Lodgings"
               >
                 <PanelLeftOpen size={20} />
               </button>

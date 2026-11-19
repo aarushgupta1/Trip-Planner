@@ -449,7 +449,7 @@ export default function TripForm({
         <div className="flex items-start gap-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3.5 py-2.5 text-xs text-amber-800 dark:text-amber-300">
           <AlertTriangle size={14} className="shrink-0 mt-0.5" />
           <span>
-            Changing the dates never deletes anything. Events, lodging and notes that fall outside the new dates are
+            Changing the dates never deletes anything. Events, lodgings and notes that fall outside the new dates are
             kept, just hidden until the dates include them again.
           </span>
         </div>

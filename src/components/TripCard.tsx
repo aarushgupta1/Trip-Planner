@@ -340,7 +340,7 @@ export default function TripCard({
 
       {confirming && (
         <ConfirmDialog
-          message={`Delete “${name}”? This permanently removes the trip along with all of its events, lodging and notes.`}
+          message={`Delete “${name}”? This permanently removes the trip along with all of its events, lodgings and notes.`}
           confirmLabel="Delete trip"
           cancelLabel="Keep it"
           onConfirm={handleDelete}

@@ -113,7 +113,7 @@ export default function UserMenu({ displayName, email }: { displayName: string; 
               </div>
             )}
             <p className={['text-xs text-gray-400 dark:text-gray-500 truncate', editing ? 'mt-2.5' : 'mt-0.5'].join(' ')}>{email}</p>
-            {editing && <p className="mt-1 text-[10px] leading-snug text-gray-400 dark:text-gray-500">Shown as “last edited by …” on events and lodging you change.</p>}
+            {editing && <p className="mt-1 text-[10px] leading-snug text-gray-400 dark:text-gray-500">Shown as “last edited by …” on events and lodgings you change.</p>}
           </div>
           <button
             onClick={handleSignOut}
