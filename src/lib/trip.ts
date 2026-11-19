@@ -19,6 +19,16 @@ export interface TripCity {
   position: number; // lower = listed first
 }
 
+// Where one person starts and ends the trip (their own city).
+export interface TripOrigin {
+  name: string;
+  country: string;
+  country_code: string;
+  lat: number;
+  lng: number;
+  timezone: string;
+}
+
 export interface Trip {
   id: string;
   name: string;
@@ -27,6 +37,7 @@ export interface Trip {
   timezone: string; // destination (calendar) timezone
   home_timezone: string; // where the travelers live
   trip_type: TripType;
+  my_origin?: TripOrigin | null; // the signed-in person's own start/end city, if they set one
   cities: TripCity[];
 }
 
@@ -150,6 +161,12 @@ export function formatCityList(cities: TripCity[], separator = ' · '): string {
 // the countries actually being visited.
 export function getCountryCodes(cities: TripCity[]): string[] {
   return [...new Set(cities.map((c) => c.country_code.toLowerCase()).filter(Boolean))];
+}
+
+// The time zone this person's home times are shown in: their own city's if
+// they set one, otherwise the trip-wide setting.
+export function effectiveHomeTimezone(trip: Pick<Trip, 'home_timezone' | 'my_origin'>): string {
+  return trip.my_origin?.timezone || trip.home_timezone;
 }
 
 // Raw `trips` row joined with its `trip_cities` rows → Trip.

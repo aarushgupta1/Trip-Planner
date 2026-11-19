@@ -47,7 +47,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       passengers={t.people.map((p) => p.display_name)}
       number={t.ticket_no}
       tripType={t.trip_type}
-      home={homeCityFromTimezone(t.home_timezone)}
+      home={t.my_origin?.name ?? homeCityFromTimezone(t.home_timezone)}
+      hasOwnHome={!!t.my_origin}
       startEditing={t.is_owner && edit === t.id}
       initial={{
         name: t.name,

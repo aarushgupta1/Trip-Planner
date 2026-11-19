@@ -97,3 +97,12 @@ describe('city helpers', () => {
     expect(getCountryCodes(SINGLE_CITY_TRIP.cities)).toEqual(['au']);
   });
 });
+
+import { effectiveHomeTimezone } from '@/lib/trip';
+describe('effectiveHomeTimezone', () => {
+  it('uses the person’s own city time zone when set, else the trip default', () => {
+    const base = { home_timezone: 'America/New_York' };
+    expect(effectiveHomeTimezone({ ...base, my_origin: null })).toBe('America/New_York');
+    expect(effectiveHomeTimezone({ ...base, my_origin: { name: 'London', country: 'UK', country_code: 'GB', lat: 51.5, lng: 0, timezone: 'Europe/London' } })).toBe('Europe/London');
+  });
+});

@@ -11,6 +11,7 @@ import {
   formatCityList,
   getCountryCodes,
   nextTripDate,
+  effectiveHomeTimezone,
 } from '@/lib/trip';
 import { homeShiftMinutes, zoneAbbreviation } from '@/lib/tripTime';
 
@@ -46,8 +47,8 @@ export function TripProvider({ trip, children }: { trip: Trip; children: React.R
       getCitiesForDate: (date) => getCitiesForDate(trip.cities, date),
       cityColor: (city) => getCityColor(trip.cities, city),
       nextDate: (date) => nextTripDate(dates, date),
-      homeShiftMinutes: homeShiftMinutes(trip.timezone, trip.home_timezone, trip.start_date),
-      homeZoneLabel: zoneAbbreviation(trip.home_timezone, trip.start_date),
+      homeShiftMinutes: homeShiftMinutes(trip.timezone, effectiveHomeTimezone(trip), trip.start_date),
+      homeZoneLabel: zoneAbbreviation(effectiveHomeTimezone(trip), trip.start_date),
     };
   }, [trip]);
 

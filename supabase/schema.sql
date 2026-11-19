@@ -528,6 +528,25 @@ grant execute on function public.save_push_subscription(text, text, text) to aut
 
 -- ---- Sharing helpers ----
 
+-- Where each person starts and ends their trip (their own city). Each person
+-- only ever sees and edits their own row.
+create table if not exists trip_origins (
+  trip_id      uuid not null references trips(id) on delete cascade,
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  name         text not null,
+  country      text not null default '',
+  country_code text not null default '',
+  lat          double precision not null,
+  lng          double precision not null,
+  timezone     text not null,
+  primary key (trip_id, user_id)
+);
+alter table trip_origins enable row level security;
+drop policy if exists "own_origin" on trip_origins;
+create policy "own_origin" on trip_origins for all to authenticated
+  using (user_id = auth.uid() and public.is_trip_member(trip_id))
+  with check (user_id = auth.uid() and public.is_trip_member(trip_id));
+
 -- Names of everyone on a trip (owner + members). Names live in auth, which
 -- the app can't read directly, so this returns just id + display name (never
 -- emails) and only to people already on the trip.

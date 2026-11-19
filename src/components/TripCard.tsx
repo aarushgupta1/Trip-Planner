@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Pencil, Trash2 } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 import TripForm from './TripForm';
+import CitySearch from './CitySearch';
+import { setMyOrigin } from '@/app/trips/actions';
 import type { TripInput } from '@/lib/tripInput';
 import { deleteTrip } from '@/app/trips/actions';
 import { TripType, TRIP_TYPE_LABELS } from '@/lib/utils';
@@ -44,6 +46,7 @@ export default function TripCard({
   number,
   tripType,
   home,
+  hasOwnHome,
   initial,
   startEditing = false,
 }: {
@@ -57,7 +60,8 @@ export default function TripCard({
   isOwner: boolean;
   passengers: string[]; // everyone on the trip, owner first
   tripType: TripType;
-  home: string; // where the trip starts and ends (for now, the same place)
+  home: string; // where this person starts and ends the trip (the same place for now)
+  hasOwnHome: boolean; // they've picked it themselves (vs. the trip's default)
   initial: TripInput; // current settings, for editing in place
   startEditing?: boolean;
   number: number; // 1 for your first trip, 2 for the next, and so on
@@ -70,8 +74,22 @@ export default function TripCard({
     if (startEditing) editRef.current?.scrollIntoView({ block: 'start' });
   }, [startEditing]);
   const [confirming, setConfirming] = useState(false);
+  const [changingHome, setChangingHome] = useState(false);
+  const [homeError, setHomeError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const saveHome = (city: Parameters<typeof setMyOrigin>[1]) => {
+    setHomeError(null);
+    startTransition(async () => {
+      const result = await setMyOrigin(id, city);
+      if ('error' in result) setHomeError(result.error);
+      else {
+        setChangingHome(false);
+        router.refresh();
+      }
+    });
+  };
 
   const handleDelete = () => {
     setConfirming(false);
@@ -149,6 +167,36 @@ export default function TripCard({
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Each person picks their own start/end city; others never see this. */}
+          <div className="pointer-events-auto relative z-10 mt-2 text-[11px] text-[var(--muted)]">
+            {changingHome ? (
+              <div className="max-w-xs space-y-1.5">
+                <CitySearch autoFocus onSelect={(city) => saveHome(city)} placeholder="Where do you start and end this trip?" />
+                <div className="flex items-center gap-3">
+                  {hasOwnHome && (
+                    <button type="button" onClick={() => saveHome(null)} className="hover:text-[var(--accent)] underline-offset-2 hover:underline">
+                      Use the trip default
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setChangingHome(false)} className="hover:text-[var(--accent)] underline-offset-2 hover:underline">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setChangingHome(true)}
+                title="Change where you start and end this trip (only changes it for you)"
+                className="inline-flex items-center gap-1 hover:text-[var(--accent)]"
+              >
+                <Pencil size={11} />
+                Starting & ending in {home || 'your city'}
+              </button>
+            )}
+            {homeError && <p className="mt-1 text-red-600 dark:text-red-400">{homeError}</p>}
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-3 border-t border-[var(--rule)] pt-2.5">

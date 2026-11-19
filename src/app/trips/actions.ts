@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServer, getCurrentUser, isSupabaseConfigured } from '@/lib/supabase/server';
-import { Trip, TripCity, toTrip } from '@/lib/trip';
-import { TripInput, validateTripInput } from '@/lib/tripInput';
+import { Trip, TripCity, TripOrigin, toTrip } from '@/lib/trip';
+import { TripInput, validateTripInput, isValidTimeZone } from '@/lib/tripInput';
 
 export interface CitySuggestion {
   name: string;
@@ -64,11 +64,15 @@ export async function getTrips(): Promise<(SharedTrip & { people: TripPerson[]; 
   if (!isSupabaseConfigured()) return [];
   const supabase = await createSupabaseServer();
   // One query for the trips and their stops together.
-  const [user, { data: rows, error }, { data: peopleRows }] = await Promise.all([
+  const [user, { data: rows, error }, { data: peopleRows }, { data: originRows }] = await Promise.all([
     getCurrentUser(),
     supabase.from('trips').select(`${TRIP_COLUMNS}, trip_cities(*)`).order('start_date', { ascending: true }),
     supabase.rpc('get_my_trip_people'),
+    // Row Level Security returns only your own start/end cities. A failure
+    // (e.g. before the schema update) just means everyone uses the trip default.
+    supabase.from('trip_origins').select('trip_id, name, country, country_code, lat, lng, timezone'),
   ]);
+  const origins = new Map(((originRows ?? []) as (TripOrigin & { trip_id: string })[]).map((o) => [o.trip_id, o]));
   if (error) throw new Error(error.message);
 
   // Everyone on each trip, owner first. A failure here just means tickets
@@ -86,6 +90,7 @@ export async function getTrips(): Promise<(SharedTrip & { people: TripPerson[]; 
 
   return list.map((row) => ({
     ...toTrip(row, row.trip_cities ?? []),
+    my_origin: origins.get(row.id) ?? null,
     is_owner: row.owner_id === user?.id,
     people: people.filter((p) => p.trip_id === row.id),
     ticket_no: ticketNo.get(row.id) ?? 0,
@@ -97,13 +102,44 @@ export async function getTrips(): Promise<(SharedTrip & { people: TripPerson[]; 
 export async function getTrip(id: string): Promise<SharedTrip | null> {
   if (!isSupabaseConfigured()) return null;
   const supabase = await createSupabaseServer();
-  const [user, { data: row }] = await Promise.all([
+  const [user, { data: row }, { data: originRow }] = await Promise.all([
     getCurrentUser(),
     supabase.from('trips').select(`${TRIP_COLUMNS}, trip_cities(*)`).eq('id', id).maybeSingle(),
+    supabase.from('trip_origins').select('name, country, country_code, lat, lng, timezone').eq('trip_id', id).maybeSingle(),
   ]);
   if (!row) return null;
   const r = row as TripRow & { trip_cities: TripCity[] };
-  return { ...toTrip(r, r.trip_cities ?? []), is_owner: r.owner_id === user?.id };
+  return { ...toTrip(r, r.trip_cities ?? []), my_origin: (originRow as TripOrigin | null) ?? null, is_owner: r.owner_id === user?.id };
+}
+
+// Sets (or, with null, clears) where the signed-in person starts and ends
+// this trip. Everyone sets their own; it never affects anyone else.
+export async function setMyOrigin(tripId: string, city: CitySuggestion | null): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createSupabaseServer();
+  const user = await getCurrentUser();
+  if (!user) return { error: 'You need to sign in again.' };
+  if (!city) {
+    const { error } = await supabase.from('trip_origins').delete().eq('trip_id', tripId).eq('user_id', user.id);
+    if (error) return { error: error.message };
+  } else {
+    if (!city.name.trim() || !Number.isFinite(city.lat) || !Number.isFinite(city.lng) || !isValidTimeZone(city.timezone)) {
+      return { error: 'Pick a city from the search results.' };
+    }
+    const { error } = await supabase.from('trip_origins').upsert({
+      trip_id: tripId,
+      user_id: user.id,
+      name: city.name.trim(),
+      country: city.country,
+      country_code: city.country_code.toUpperCase(),
+      lat: city.lat,
+      lng: city.lng,
+      timezone: city.timezone,
+    });
+    if (error) return { error: error.message };
+  }
+  revalidatePath('/');
+  revalidatePath(`/trips/${tripId}`);
+  return { ok: true };
 }
 
 function cityRows(tripId: string, input: TripInput) {
