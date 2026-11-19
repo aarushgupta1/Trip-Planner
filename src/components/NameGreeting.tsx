@@ -30,8 +30,8 @@ export default function NameGreeting({ name }: { name: string }) {
   };
 
   return (
-    <h1 ref={ref} className="greet mb-3 flex items-baseline gap-2 text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100" aria-label={`Hi ${name}`}>
-      <span aria-hidden className="greet-hi">Hi</span>
+    <h1 ref={ref} className="greet mb-3 flex items-baseline gap-2 text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100" aria-label={`Welcome ${name}`}>
+      <span aria-hidden className="greet-hi">Welcome</span>
       <span aria-hidden className="greet-wrap relative inline-block">
         <span className="greet-name block" onAnimationEnd={markPlayed}>
           {name}

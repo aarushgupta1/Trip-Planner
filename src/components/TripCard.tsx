@@ -34,6 +34,20 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
+// Folds a ticket away smoothly (fade, shrink, collapse) once it's deleted.
+function Collapse({ gone, children }: { gone: boolean; children: React.ReactNode }) {
+  return (
+    <div
+      className={[
+        'grid transition-[grid-template-rows,opacity,transform] duration-300 ease-out motion-reduce:transition-none',
+        gone ? 'grid-rows-[0fr] opacity-0 scale-[0.98]' : 'grid-rows-[1fr]',
+      ].join(' ')}
+    >
+      <div className={['min-h-0', gone ? 'overflow-hidden' : ''].join(' ')}>{children}</div>
+    </div>
+  );
+}
+
 function HomeEditor({
   tripId,
   home,
@@ -187,16 +201,22 @@ export default function TripCard({
   }, [startEditing]);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [deleting, setDeleting] = useState(false);
+  const [gone, setGone] = useState(false);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     setConfirming(false);
     setError(null);
-    startTransition(async () => {
-      const result = await deleteTrip(id);
-      if ('error' in result) setError(result.error);
-      else router.refresh();
-    });
+    setDeleting(true);
+    const result = await deleteTrip(id);
+    if ('error' in result) {
+      setDeleting(false);
+      setError(result.error);
+      return;
+    }
+    // Fade and fold the ticket away, then let the list refresh without it.
+    setGone(true);
+    setTimeout(() => router.refresh(), 380);
   };
 
   const s = parts(start);
@@ -218,7 +238,8 @@ export default function TripCard({
 
   if (editing) {
     return (
-      <div ref={editRef} className={['ticket ticket-editing scroll-mt-20', `ticket-${tripType}`, confirming ? 'ticket-locked' : '', isPending ? 'opacity-50 pointer-events-none' : ''].join(' ')}>
+      <Collapse gone={gone}>
+      <div ref={editRef} className={['ticket ticket-editing scroll-mt-20', `ticket-${tripType}`, confirming ? 'ticket-locked' : '', deleting ? 'opacity-[0.85] pointer-events-none' : ''].join(' ')}>
         <div className="ticket-paper ticket-paper-editing px-5 py-5 sm:px-6">
           <div className="mb-4 font-mono text-[11px] tracking-[0.08em] text-[var(--accent)]">TRIP {number} · EDIT SETTINGS</div>
           <TripForm
@@ -241,11 +262,13 @@ export default function TripCard({
           />
         )}
       </div>
+      </Collapse>
     );
   }
 
   return (
-    <div className={['ticket', `ticket-${tripType}`, confirming ? 'ticket-locked' : '', isPending ? 'opacity-50 pointer-events-none' : ''].join(' ')}>
+    <Collapse gone={gone}>
+    <div className={['ticket', `ticket-${tripType}`, confirming ? 'ticket-locked' : '', deleting ? 'opacity-[0.85] pointer-events-none' : ''].join(' ')}>
       <div className="ticket-paper">
         {/* Whole ticket opens the trip; the edit/delete buttons sit above this. */}
         <Link href={`/trips/${id}`} aria-label={`Open ${name}`} className="absolute inset-0 z-0 rounded-[6px] outline-none" />
@@ -358,5 +381,6 @@ export default function TripCard({
         />
       )}
     </div>
+    </Collapse>
   );
 }

@@ -4,8 +4,8 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { X, Plus, Trash2, CalendarRange, Globe2, AlertTriangle, Check, Copy, Share2 } from 'lucide-react';
-import CitySearch from './CitySearch';
-import { createTrip, createInvite, updateTrip, CitySuggestion } from '@/app/trips/actions';
+import CitySearch, { describeCity } from './CitySearch';
+import { createTrip, createInvite, updateTrip, setMyOrigin, CitySuggestion } from '@/app/trips/actions';
 import { CityInput, TripInput, validateTripInput, MAX_CITIES } from '@/lib/tripInput';
 import { datesInRange, formatDateRange, formatDateShort, TRIP_TYPES, TRIP_TYPE_LABELS, TripType } from '@/lib/utils';
 import { canNativeShare, inviteMessage, shareInvite } from '@/lib/share';
@@ -43,6 +43,17 @@ function splitEvenly(start: string, end: string, count: number): { start: string
 let keyCounter = 0;
 const newKey = () => `stop-${++keyCounter}`;
 
+function CityChip({ city, onClear }: { city: CitySuggestion; onClear: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-800">
+      <span className="min-w-0 truncate font-medium text-gray-900 dark:text-gray-100">{describeCity(city)}</span>
+      <button type="button" onClick={onClear} aria-label="Remove" className="shrink-0 rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
 export default function TripForm({
   mode,
   tripId,
@@ -68,6 +79,12 @@ export default function TripForm({
   // '' = "use this device's time zone", resolved when saving (so the server
   // render and the browser never disagree about it).
   const [homeTimezone, setHomeTimezone] = useState(initial?.home_timezone ?? '');
+  // Creating a trip: where this person starts and ends it (each person can
+  // set their own later, on their ticket). Ending is "the same place" unless
+  // they say otherwise.
+  const [startCity, setStartCity] = useState<CitySuggestion | null>(null);
+  const [endCity, setEndCity] = useState<CitySuggestion | null>(null);
+  const [endElsewhere, setEndElsewhere] = useState(false);
   const [stops, setStops] = useState<StopDraft[]>(() => (initial?.cities ?? []).map((c) => ({ ...c, key: newKey() })));
   // Once someone edits a stop's dates by hand we stop auto-spreading days
   // across stops (it would overwrite their work).
@@ -139,7 +156,7 @@ export default function TripForm({
     setStops((prev) => prev.map((s) => (s.key === key ? { ...s, [field]: value } : s)));
   };
 
-  const resolveHomeTimezone = () => homeTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const resolveHomeTimezone = () => startCity?.timezone || homeTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,6 +186,9 @@ export default function TripForm({
         return;
       }
       const id = mode === 'create' ? (result as { id: string }).id : tripId!;
+      // Save this person's own start/end cities. If it somehow fails the trip
+      // still exists; they can set it from the ticket.
+      if (mode === 'create' && startCity) await setMyOrigin(id, startCity, endElsewhere ? endCity : null).catch(() => null);
       if (mode === 'create' && share) {
         const invite = await createInvite(id);
         // If the link can't be made, the trip still exists — carry on to it;
@@ -470,7 +490,45 @@ export default function TripForm({
         </p>
       </div>
 
-      {/* Home time zone */}
+      {/* Where you start and end (create) / home time zone (edit) */}
+      {mode === 'create' ? (
+        <div className="space-y-4">
+          <div>
+            <span className={labelClass}>Where are you travelling from?</span>
+            {startCity ? (
+              <CityChip city={startCity} onClear={() => { setStartCity(null); setEndCity(null); setEndElsewhere(false); }} />
+            ) : (
+              <CitySearch onSelect={setStartCity} placeholder="Search for your starting city" />
+            )}
+            <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+              Optional. Shown on your ticket, and flights show times in your home time.
+            </p>
+          </div>
+
+          {startCity && (
+            <div>
+              <span className={labelClass}>Where will you end the trip?</span>
+              {!endElsewhere ? (
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Back in {startCity.name}.{' '}
+                  <button type="button" onClick={() => setEndElsewhere(true)} className="text-blue-600 underline-offset-2 hover:underline dark:text-blue-400">
+                    Ending somewhere else?
+                  </button>
+                </p>
+              ) : endCity ? (
+                <CityChip city={endCity} onClear={() => setEndCity(null)} />
+              ) : (
+                <div className="space-y-1.5">
+                  <CitySearch autoFocus onSelect={setEndCity} placeholder="Search for your ending city" />
+                  <button type="button" onClick={() => setEndElsewhere(false)} className="text-xs text-gray-500 underline-offset-2 hover:underline dark:text-gray-400">
+                    Same as where I start
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
       <div>
         <label htmlFor="home-tz" className={labelClass}>Where are you travelling from?</label>
         <select
@@ -489,6 +547,8 @@ export default function TripForm({
           Lets flights show departure and arrival times in your home time as well as local time.
         </p>
       </div>
+
+      )}
 
       {mode === 'edit' && (
         <div className="flex items-start gap-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3.5 py-2.5 text-xs text-amber-800 dark:text-amber-300">
