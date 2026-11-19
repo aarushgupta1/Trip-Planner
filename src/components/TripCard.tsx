@@ -12,7 +12,8 @@ import type { TripInput } from '@/lib/tripInput';
 import { deleteTrip } from '@/app/trips/actions';
 import { TripType, TRIP_TYPE_LABELS } from '@/lib/utils';
 import type { TripPlace } from '@/lib/trip';
-import { barcodeBars, cityCode, formatPassengers } from '@/lib/ticket';
+import { barcodeBars, cityCode } from '@/lib/ticket';
+import { passengerFont } from '@/lib/passengerFonts';
 
 const MAX_STOPS_SHOWN = 3; // destinations shown between the start and end
 
@@ -168,7 +169,7 @@ export default function TripCard({
   days: number;
   status: { label: string; tone: 'live' | 'soon' | 'past' };
   isOwner: boolean;
-  passengers: string[]; // everyone on the trip, owner first
+  passengers: { name: string; font: number }[]; // everyone on the trip, owner first
   tripType: TripType;
   home: string; // where this person starts the trip
   homeEnd: string; // where this person ends it (often the same place)
@@ -208,7 +209,8 @@ export default function TripCard({
   const endStop = homeEnd ? { name: homeEnd, country: '' } : homeStop;
   const shown = homeStop && endStop ? [homeStop, ...middle, endStop] : middle;
   const past = status.tone === 'past';
-  const pax = formatPassengers(passengers);
+  const paxNames = passengers.filter((p) => p.name.trim());
+  const pax = { shown: paxNames.slice(0, 3), more: Math.max(0, paxNames.length - 3) };
   const bars = barcodeBars(id);
   const barXs = bars.map((_, i) => bars.slice(0, i).reduce((n, w) => n + w + 1, 0));
   const barWidth = bars.reduce((n, w) => n + w + 1, 0);
@@ -299,12 +301,19 @@ export default function TripCard({
               <div className="font-mono text-[11px] tracking-[0.08em] text-[var(--accent)]">
                 {passengers.length === 1 ? 'PASSENGER' : `PASSENGERS · ${passengers.length}`}
               </div>
-              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5" title={passengers.join(', ')}>
-                {pax.shown.map((n, i) => (
-                  <span key={`${n}-${i}`} className="max-w-[12rem] truncate pt-0.5 font-hand text-[22px] leading-[1.1]">
-                    {n}
-                  </span>
-                ))}
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5" title={paxNames.map((p) => p.name).join(', ')}>
+                {pax.shown.map((p, i) => {
+                  const f = passengerFont(p.font);
+                  return (
+                    <span
+                      key={`${p.name}-${i}`}
+                      className="max-w-[12rem] truncate pt-0.5 leading-[1.2]"
+                      style={{ fontFamily: f.family, fontSize: f.size }}
+                    >
+                      {p.name}
+                    </span>
+                  );
+                })}
                 {pax.more > 0 && <span className="self-center text-xs text-[var(--muted)]">+{pax.more} more</span>}
               </div>
             </div>

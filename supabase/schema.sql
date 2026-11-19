@@ -630,18 +630,27 @@ $$;
 revoke all on function public.get_trip_people(uuid) from public, anon;
 grant execute on function public.get_trip_people(uuid) to authenticated;
 
+-- Each person gets a random handwriting style (0-5) for their name on the
+-- trip's ticket, chosen once when they're added to the trip. Two people can
+-- share one. Existing rows each get their own random pick.
+alter table trips add column if not exists owner_font_idx integer not null default floor(random() * 6)::int;
+alter table trip_members add column if not exists font_idx integer not null default floor(random() * 6)::int;
+
 -- Everyone on every trip you're on, in one call — for the passengers line on
 -- the dashboard tickets. Same rules as get_trip_people: ids and display names
 -- only (never emails), and only for trips you belong to.
+drop function if exists public.get_my_trip_people();
 create or replace function public.get_my_trip_people()
-returns table (trip_id uuid, user_id uuid, display_name text, is_owner boolean)
+returns table (trip_id uuid, user_id uuid, display_name text, is_owner boolean, font_idx integer)
 language sql stable security definer
 set search_path = public, auth
 as $$
   select t.id,
          u.id,
          coalesce(nullif(trim(u.raw_user_meta_data->>'full_name'), ''), split_part(u.email, '@', 1)),
-         (t.owner_id = u.id)
+         (t.owner_id = u.id),
+         case when t.owner_id = u.id then t.owner_font_idx
+              else coalesce((select m.font_idx from trip_members m where m.trip_id = t.id and m.user_id = u.id), 0) end
   from trips t
   join auth.users u on u.id = t.owner_id
     or u.id in (select m.user_id from trip_members m where m.trip_id = t.id)

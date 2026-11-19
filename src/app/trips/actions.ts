@@ -272,6 +272,7 @@ export interface TripPerson {
   user_id: string;
   display_name: string;
   is_owner: boolean;
+  font_idx?: number; // which handwriting style their name uses on tickets
 }
 
 export async function getTripPeople(tripId: string): Promise<TripPerson[]> {
