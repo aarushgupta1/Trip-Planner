@@ -228,7 +228,7 @@ export default function TripCard({
   }
 
   return (
-    <div className={['ticket', `ticket-${tripType}`, isPending ? 'opacity-50 pointer-events-none' : ''].join(' ')}>
+    <div className={['ticket', `ticket-${tripType}`, confirming ? 'ticket-locked' : '', isPending ? 'opacity-50 pointer-events-none' : ''].join(' ')}>
       <div className="ticket-paper">
         {/* Whole ticket opens the trip; the edit/delete buttons sit above this. */}
         <Link href={`/trips/${id}`} aria-label={`Open ${name}`} className="absolute inset-0 z-0 rounded-[6px] outline-none" />
