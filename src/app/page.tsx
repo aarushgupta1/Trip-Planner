@@ -73,7 +73,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   );
 
   return (
-    <main className="min-h-dvh">
+    <main className="min-h-dvh bg-gray-50 dark:bg-gray-950">
       <header className="h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 sm:px-6 shadow-sm">
         <div className="flex items-center gap-2">
           <BrandMark />
