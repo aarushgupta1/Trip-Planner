@@ -109,6 +109,9 @@ function DayHeader({
   // single one.
   const { trip, getCitiesForDate, cityColor } = useTrip();
   const cities = getCitiesForDate(date);
+  // Only real forecasts and recorded weather are shown. A day too far out for
+  // a forecast shows no temperature rather than a historical average.
+  const shownWeather = weather?.filter((w) => w.kind !== 'typical');
   // A city's name is only spelled out where its stay begins (or on the first
   // day shown); later days of the same stay just carry its colour dot, so the
   // same place isn't repeated under every date.
@@ -140,7 +143,7 @@ function DayHeader({
         <div className="flex items-start justify-center gap-2 mt-0.5 flex-wrap">
           {cities.map((city) => {
             const colors = cityColor(city);
-            const cityWeather = weather?.find((w) => w.city === cityKey(city));
+            const cityWeather = shownWeather?.find((w) => w.city === cityKey(city));
             return (
               <div key={cityKey(city)} className="flex flex-col items-center gap-0.5">
                 {previousKeys.includes(cityKey(city)) ? (
@@ -170,9 +173,6 @@ function DayHeader({
                         <span className="font-medium">{cityWeather.high}°</span>
                         <span className="text-gray-300 dark:text-gray-600">/{cityWeather.low}°</span>
                       </div>
-                      {cityWeather.kind === 'typical' && (
-                        <span className="text-[8px] leading-tight text-gray-400 dark:text-gray-500">(historical)</span>
-                      )}
                     </div>
                   );
                 })()}
@@ -180,7 +180,7 @@ function DayHeader({
             );
           })}
         </div>
-        {weather && weather.length > 0 && (
+        {shownWeather && shownWeather.length > 0 && (
           <div ref={chooserRef} className="relative mt-1 inline-block">
             <button
               onClick={() => {
@@ -967,9 +967,9 @@ export default function CalendarBoard({
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-blue-600/40 text-blue-600 hover:bg-blue-600/10 text-xs font-semibold transition-colors"
                   title="Ask Aero: questions, ideas and an itinerary check"
                 >
-                  Ask
+                  <span className="text-red-600 dark:text-red-400">Ask</span>
                   <AeroPlaneIcon size={13} />
-                  Aero
+                  <span className="text-red-600 dark:text-red-400">Aero</span>
                 </button>
                 {/* Jump to today — only relevant while the trip is actually underway */}
                 {now && TRIP_DATES.includes(now.date) && (
