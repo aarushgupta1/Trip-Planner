@@ -49,12 +49,13 @@ import EditModal from './EditModal';
 import CreateModal from './CreateModal';
 import GuidePanel from './GuidePanel';
 import AeroPlaneIcon from './AeroPlaneIcon';
+import PackingPanel from './PackingPanel';
 import type { GuideSuggestion } from '@/lib/guide';
 import NotificationsMenu from './NotificationsMenu';
 import FlightPathIcon from './FlightPathIcon';
 import ThemeToggle from './ThemeToggle';
 import TimeLabels from './TimeLabels';
-import { Pencil, PanelLeftOpen, WifiOff, CalendarDays, ArrowRight, Clock, Map as MapIcon } from 'lucide-react';
+import { Pencil, PanelLeftOpen, WifiOff, CalendarDays, ArrowRight, Clock, Luggage, Map as MapIcon } from 'lucide-react';
 
 // Leaflet touches `window`/`document` at import time, so it can only ever
 // load on the client — ssr: false keeps it (and its CSS) out of the server
@@ -353,6 +354,7 @@ export default function CalendarBoard({
   const [hourlyCity, setHourlyCity] = useState<string | null>(null);
   const hourlyRequest = useRef<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [showPacking, setShowPacking] = useState(false);
   // An event Aero suggested, opened in the normal add-event form for review.
   const [guideSuggestion, setGuideSuggestion] = useState<GuideSuggestion | null>(null);
   const [colWidth, setColWidth] = useState(200);
@@ -963,13 +965,21 @@ export default function CalendarBoard({
 
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setShowGuide((v) => !v)}
+                  onClick={() => { setShowGuide((v) => !v); setShowPacking(false); }}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-blue-600/40 text-blue-600 hover:bg-blue-600/10 text-xs font-semibold transition-colors"
                   title="Ask Aero: questions, ideas and an itinerary check"
                 >
                   Ask
                   <AeroPlaneIcon size={13} />
                   Aero
+                </button>
+                <button
+                  onClick={() => { setShowPacking((v) => !v); setShowGuide(false); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-semibold transition-colors"
+                  title="Your packing list"
+                >
+                  <Luggage size={13} />
+                  <span className="hidden sm:inline">Packing</span>
                 </button>
                 {/* Jump to today — only relevant while the trip is actually underway */}
                 {now && TRIP_DATES.includes(now.date) && (
@@ -1122,6 +1132,8 @@ export default function CalendarBoard({
           readOnly={!isOnline}
         />
       )}
+
+      {showPacking && <PackingPanel tripId={trip.id} tripType={trip.trip_type} onClose={() => setShowPacking(false)} />}
 
       {showGuide && (
         <GuidePanel

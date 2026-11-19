@@ -554,6 +554,42 @@ create policy "own_origin" on trip_origins for all to authenticated
   using (user_id = auth.uid() and public.is_trip_member(trip_id))
   with check (user_id = auth.uid() and public.is_trip_member(trip_id));
 
+-- Packing lists. Each item belongs to the person who added it. A "shared"
+-- item shows up on everyone's list on the trip; everyone ticks it off
+-- separately (packing_checks holds each person's own ticks).
+create table if not exists packing_items (
+  id         uuid primary key default gen_random_uuid(),
+  trip_id    uuid not null references trips(id) on delete cascade,
+  created_by uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  name       text not null check (char_length(name) between 1 and 120),
+  shared     boolean not null default false,
+  created_at timestamptz default now()
+);
+create index if not exists packing_items_trip_idx on packing_items (trip_id);
+create table if not exists packing_checks (
+  item_id uuid not null references packing_items(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  primary key (item_id, user_id)
+);
+alter table packing_items enable row level security;
+alter table packing_checks enable row level security;
+drop policy if exists "see_items" on packing_items;
+drop policy if exists "add_items" on packing_items;
+drop policy if exists "own_items_update" on packing_items;
+drop policy if exists "own_items_delete" on packing_items;
+create policy "see_items" on packing_items for select to authenticated
+  using (public.is_trip_member(trip_id) and (shared or created_by = auth.uid()));
+create policy "add_items" on packing_items for insert to authenticated
+  with check (public.is_trip_member(trip_id) and created_by = auth.uid());
+create policy "own_items_update" on packing_items for update to authenticated
+  using (created_by = auth.uid()) with check (created_by = auth.uid() and public.is_trip_member(trip_id));
+create policy "own_items_delete" on packing_items for delete to authenticated
+  using (created_by = auth.uid());
+drop policy if exists "own_checks" on packing_checks;
+create policy "own_checks" on packing_checks for all to authenticated
+  using (user_id = auth.uid() and exists (select 1 from packing_items i where i.id = item_id))
+  with check (user_id = auth.uid() and exists (select 1 from packing_items i where i.id = item_id));
+
 -- Names of everyone on a trip (owner + members). Names live in auth, which
 -- the app can't read directly, so this returns just id + display name (never
 -- emails) and only to people already on the trip.
