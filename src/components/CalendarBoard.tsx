@@ -149,7 +149,7 @@ function DayHeader({
               <div key={cityKey(city)} className="flex flex-col items-center gap-0.5">
                 {previousKeys.includes(cityKey(city)) ? (
                   <span
-                    className={['my-1.5 inline-block h-1 w-1 rounded-full', colors.dot].join(' ')}
+                    className={['my-1 inline-block h-1.5 w-1.5 rounded-full', colors.dot].join(' ')}
                     title={city.name}
                     aria-label={city.name}
                   />
